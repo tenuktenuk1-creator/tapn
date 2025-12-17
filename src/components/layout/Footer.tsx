@@ -1,52 +1,93 @@
 import { Link } from 'react-router-dom';
+import { MapPin, Mail, Instagram, Twitter, Facebook } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-muted/30">
-      <div className="container py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="col-span-2 md:col-span-1">
+    <footer className="bg-background border-t border-border">
+      <div className="container py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
+          {/* Logo & Tagline */}
+          <div>
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold">T</span>
-              </div>
-              <span className="font-display font-bold text-lg">TAPN</span>
+              <MapPin className="h-6 w-6 text-primary" />
+              <span className="font-display font-bold text-xl text-primary">TAPN</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              Discover and book the best entertainment venues in your city.
+              Tap into the night.
             </p>
           </div>
 
+          {/* Quick Links */}
           <div>
-            <h4 className="font-display font-semibold mb-4">Explore</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/venues" className="hover:text-foreground transition-colors">All Venues</Link></li>
-              <li><Link to="/venues?type=cafe" className="hover:text-foreground transition-colors">Cafes</Link></li>
-              <li><Link to="/venues?type=karaoke" className="hover:text-foreground transition-colors">Karaoke</Link></li>
-              <li><Link to="/venues?type=pool_snooker" className="hover:text-foreground transition-colors">Pool & Snooker</Link></li>
+            <h4 className="font-semibold mb-4 text-foreground">Quick Links</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li>
+                <Link to="/venues" className="hover:text-foreground transition-colors">
+                  Venues
+                </Link>
+              </li>
+              <li>
+                <Link to="/venues" className="hover:text-foreground transition-colors">
+                  Categories
+                </Link>
+              </li>
+              <li>
+                <Link to="/#how-it-works" className="hover:text-foreground transition-colors">
+                  How It Works
+                </Link>
+              </li>
+              <li>
+                <Link to="/#partner" className="hover:text-foreground transition-colors">
+                  Partner With Us
+                </Link>
+              </li>
             </ul>
           </div>
 
+          {/* Contact */}
           <div>
-            <h4 className="font-display font-semibold mb-4">Support</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">Help Center</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Contact Us</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">FAQs</a></li>
+            <h4 className="font-semibold mb-4 text-foreground">Contact</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                <a href="mailto:hello@tapn.com" className="hover:text-foreground transition-colors">
+                  hello@tapn.com
+                </a>
+              </li>
             </ul>
           </div>
 
+          {/* Follow Us */}
           <div>
-            <h4 className="font-display font-semibold mb-4">Legal</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
-            </ul>
+            <h4 className="font-semibold mb-4 text-foreground">Follow Us</h4>
+            <div className="flex items-center gap-3">
+              <a 
+                href="#" 
+                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+              >
+                <Instagram className="h-5 w-5 text-muted-foreground" />
+              </a>
+              <a 
+                href="#" 
+                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+              >
+                <Twitter className="h-5 w-5 text-muted-foreground" />
+              </a>
+              <a 
+                href="#" 
+                className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+              >
+                <Facebook className="h-5 w-5 text-muted-foreground" />
+              </a>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} TAPN. All rights reserved.
+      {/* Copyright */}
+      <div className="border-t border-border">
+        <div className="container py-6 text-center text-sm text-muted-foreground">
+          TAPN © {new Date().getFullYear()} — All Rights Reserved.
         </div>
       </div>
     </footer>
