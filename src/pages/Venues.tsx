@@ -11,7 +11,7 @@ export default function VenuesPage() {
   const [searchParams] = useSearchParams();
   const initialType = (searchParams.get('type') as VenueType) || 'all';
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [venueType, setVenueType] = useState<VenueType | 'all'>(initialType);
   const [city, setCity] = useState('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
@@ -28,11 +28,13 @@ export default function VenuesPage() {
     <Layout>
       <div className="container py-8">
         <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold mb-2">Explore Venues</h1>
-          <p className="text-muted-foreground">Find the perfect venue for your next outing</p>
+          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
+            <span className="text-foreground">Discover </span>
+            <span className="text-gradient">Venues</span>
+          </h1>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-8">
           <VenueFilters
             search={search}
             venueType={venueType}
@@ -48,10 +50,14 @@ export default function VenuesPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton className="aspect-[4/3] rounded-xl" />
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+              <div key={i} className="card-dark rounded-2xl overflow-hidden">
+                <Skeleton className="aspect-[4/3]" />
+                <div className="p-5 space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
               </div>
             ))}
           </div>

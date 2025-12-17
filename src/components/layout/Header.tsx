@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Menu, X, User, LogOut, Settings } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import {
   DropdownMenu,
@@ -22,24 +22,43 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full glass border-b border-border/50">
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-display font-bold text-lg">T</span>
-          </div>
-          <span className="font-display font-bold text-xl text-foreground">TAPN</span>
+          <MapPin className="h-6 w-6 text-primary" />
+          <span className="font-display font-bold text-xl text-primary">TAPN</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-8">
           <Link 
             to="/venues" 
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Explore Venues
+            Venues
           </Link>
-          
+          <Link 
+            to="/venues" 
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Categories
+          </Link>
+          <Link 
+            to="/#how-it-works" 
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            How It Works
+          </Link>
+          <Link 
+            to="/#partner" 
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Partner With Us
+          </Link>
+        </nav>
+
+        {/* Desktop Auth */}
+        <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
               <Link 
@@ -84,16 +103,15 @@ export function Header() {
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" onClick={() => navigate('/auth')}>
-                Sign In
-              </Button>
-              <Button onClick={() => navigate('/auth?mode=signup')} className="gradient-primary">
-                Get Started
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/auth')}
+              className="bg-foreground text-background hover:bg-foreground/90 border-0 rounded-full px-6"
+            >
+              Sign In
+            </Button>
           )}
-        </nav>
+        </div>
 
         {/* Mobile Menu Button */}
         <button
@@ -113,7 +131,28 @@ export function Header() {
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Explore Venues
+              Venues
+            </Link>
+            <Link 
+              to="/venues" 
+              className="py-2 text-sm font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Categories
+            </Link>
+            <Link 
+              to="/#how-it-works" 
+              className="py-2 text-sm font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              How It Works
+            </Link>
+            <Link 
+              to="/#partner" 
+              className="py-2 text-sm font-medium"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Partner With Us
             </Link>
             
             {user ? (
@@ -149,17 +188,14 @@ export function Header() {
               </>
             ) : (
               <div className="flex flex-col gap-2 pt-2">
-                <Button variant="outline" onClick={() => {
-                  navigate('/auth');
-                  setMobileMenuOpen(false);
-                }}>
+                <Button 
+                  onClick={() => {
+                    navigate('/auth');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="bg-foreground text-background hover:bg-foreground/90"
+                >
                   Sign In
-                </Button>
-                <Button onClick={() => {
-                  navigate('/auth?mode=signup');
-                  setMobileMenuOpen(false);
-                }} className="gradient-primary">
-                  Get Started
                 </Button>
               </div>
             )}
