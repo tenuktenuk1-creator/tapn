@@ -37,7 +37,12 @@ export default function AdminDashboard() {
   const totalVenues = venues?.length || 0;
   const activeVenues = venues?.filter(v => v.is_active)?.length || 0;
   const totalBookings = bookings?.length || 0;
-  const pendingBookings = bookings?.filter(b => b.status === 'pending')?.length || 0;
+  const confirmedBookings = bookings?.filter(b => b.status === 'confirmed')?.length || 0;
+
+  // Calculate total revenue from confirmed bookings
+  const totalRevenue = bookings
+    ?.filter(b => b.status === 'confirmed' && b.payment_status === 'paid')
+    ?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
 
   const stats = [
     { 
@@ -62,11 +67,11 @@ export default function AdminDashboard() {
       bgColor: 'bg-primary/10'
     },
     { 
-      title: 'Pending Bookings', 
-      value: pendingBookings, 
+      title: 'Confirmed', 
+      value: confirmedBookings, 
       icon: Clock, 
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10'
+      color: 'text-green-500',
+      bgColor: 'bg-green-500/10'
     },
   ];
 

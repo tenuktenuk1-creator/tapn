@@ -1,1 +1,10 @@
 project_id = "sbdgdjtyapnnxwgqzsgp"
+
+[functions.create-payment-intent]
+verify_jwt = false
+
+[functions.confirm-booking]
+verify_jwt = false
+
+[functions.cancel-booking]
+verify_jwt = false

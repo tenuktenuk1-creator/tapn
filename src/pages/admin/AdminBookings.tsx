@@ -6,11 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   Calendar, 
   ArrowLeft,
-  Check,
   X,
   Clock,
   User,
-  Building2
+  Building2,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+type BookingStatus = 'confirmed' | 'cancelled';
 
 interface BookingWithDetails {
   id: string;
@@ -42,6 +42,8 @@ interface BookingWithDetails {
   guest_count: number;
   total_price: number;
   status: BookingStatus;
+  payment_status: string;
+  stripe_payment_intent_id: string | null;
   created_at: string;
   venues: {
     name: string;
@@ -58,6 +60,7 @@ export default function AdminBookings() {
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && isAdmin) {
@@ -99,32 +102,42 @@ export default function AdminBookings() {
     return <Navigate to="/" replace />;
   }
 
-  const handleStatusChange = async (bookingId: string, newStatus: BookingStatus) => {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: newStatus })
-      .eq('id', bookingId);
+  const handleCancelBooking = async (bookingId: string) => {
+    setCancellingId(bookingId);
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-booking', {
+        body: { bookingId },
+      });
 
-    if (error) {
-      toast.error('Failed to update booking status');
-    } else {
-      toast.success(`Booking ${newStatus}`);
-      fetchBookings();
+      if (error || data?.error) {
+        toast.error(data?.error || 'Failed to cancel booking');
+      } else {
+        toast.success('Booking cancelled and refunded');
+        fetchBookings();
+      }
+    } catch (err) {
+      toast.error('Failed to cancel booking');
+    } finally {
+      setCancellingId(null);
     }
   };
 
-  const getStatusBadge = (status: BookingStatus) => {
+  const getStatusBadge = (status: BookingStatus, paymentStatus: string) => {
     const config = {
-      pending: { className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pending' },
-      approved: { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Approved' },
-      rejected: { className: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Rejected' },
+      confirmed: { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Confirmed' },
       cancelled: { className: 'bg-gray-500/10 text-gray-500 border-gray-500/20', label: 'Cancelled' },
     };
 
     return (
-      <Badge variant="outline" className={config[status].className}>
-        {config[status].label}
-      </Badge>
+      <div className="flex flex-col gap-1">
+        <Badge variant="outline" className={config[status].className}>
+          {config[status].label}
+        </Badge>
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <CreditCard className="h-3 w-3" />
+          {paymentStatus}
+        </span>
+      </div>
     );
   };
 
@@ -146,6 +159,9 @@ export default function AdminBookings() {
               <span className="text-foreground">Manage </span>
               <span className="text-gradient">Bookings</span>
             </h1>
+            <p className="text-muted-foreground mt-1">
+              All bookings are payment-confirmed. Cancel to issue refunds.
+            </p>
           </div>
           <Select
             value={statusFilter}
@@ -156,9 +172,7 @@ export default function AdminBookings() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Bookings</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
@@ -246,31 +260,29 @@ export default function AdminBookings() {
                       {booking.guest_count}
                     </TableCell>
                     <TableCell className="text-foreground font-medium">
-                      {booking.total_price ? `₮${booking.total_price.toLocaleString()}` : '-'}
+                      {booking.total_price ? `$${(booking.total_price / 100).toLocaleString()}` : '-'}
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(booking.status)}
+                      {getStatusBadge(booking.status, booking.payment_status)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {booking.status === 'pending' && (
-                        <div className="flex items-center justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-green-500 hover:text-green-500 hover:bg-green-500/10"
-                            onClick={() => handleStatusChange(booking.id, 'approved')}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-red-500 hover:text-red-500 hover:bg-red-500/10"
-                            onClick={() => handleStatusChange(booking.id, 'rejected')}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      {booking.status === 'confirmed' && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-500 hover:text-red-500 hover:bg-red-500/10"
+                          onClick={() => handleCancelBooking(booking.id)}
+                          disabled={cancellingId === booking.id}
+                        >
+                          {cancellingId === booking.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500" />
+                          ) : (
+                            <>
+                              <X className="h-4 w-4 mr-1" />
+                              Cancel & Refund
+                            </>
+                          )}
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

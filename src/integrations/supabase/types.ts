@@ -25,7 +25,8 @@ export type Database = {
           payment_method: string | null
           payment_status: string | null
           start_time: string
-          status: Database["public"]["Enums"]["booking_status"] | null
+          status: string | null
+          stripe_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
           user_id: string
@@ -41,7 +42,8 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           start_time: string
-          status?: Database["public"]["Enums"]["booking_status"] | null
+          status?: string | null
+          stripe_payment_intent_id?: string | null
           total_price?: number | null
           updated_at?: string | null
           user_id: string
@@ -57,7 +59,8 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           start_time?: string
-          status?: Database["public"]["Enums"]["booking_status"] | null
+          status?: string | null
+          stripe_payment_intent_id?: string | null
           total_price?: number | null
           updated_at?: string | null
           user_id?: string
@@ -141,10 +144,12 @@ export type Database = {
           opening_hours: Json | null
           phone: string | null
           price_per_hour: number | null
+          price_tier: string | null
           rating: number | null
           review_count: number | null
           updated_at: string | null
           venue_type: Database["public"]["Enums"]["venue_type"]
+          vibe_tags: string[] | null
         }
         Insert: {
           address: string
@@ -162,10 +167,12 @@ export type Database = {
           opening_hours?: Json | null
           phone?: string | null
           price_per_hour?: number | null
+          price_tier?: string | null
           rating?: number | null
           review_count?: number | null
           updated_at?: string | null
           venue_type: Database["public"]["Enums"]["venue_type"]
+          vibe_tags?: string[] | null
         }
         Update: {
           address?: string
@@ -183,10 +190,12 @@ export type Database = {
           opening_hours?: Json | null
           phone?: string | null
           price_per_hour?: number | null
+          price_tier?: string | null
           rating?: number | null
           review_count?: number | null
           updated_at?: string | null
           venue_type?: Database["public"]["Enums"]["venue_type"]
+          vibe_tags?: string[] | null
         }
         Relationships: []
       }

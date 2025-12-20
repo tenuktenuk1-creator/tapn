@@ -8,27 +8,136 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Users, Clock } from 'lucide-react';
+import { CalendarIcon, Users, Clock, CreditCard, Loader2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { Venue } from '@/types/venue';
-import { useCreateBooking } from '@/hooks/useBookings';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Initialize Stripe with publishable key
+const stripePromise = loadStripe('pk_test_51RTEwdPMBd6oo5i5g20h6PN3ZUxnI1UlFqJQbgSUmRPfPVSKL2xD8X27NZcyLWPXFMnL0PnHD0NrYvmW2OelZxPH00F1xQgCRB');
 
 interface BookingFormProps {
   venue: Venue;
 }
 
+interface PaymentFormProps {
+  clientSecret: string;
+  paymentIntentId: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+  amount: number;
+}
+
+function PaymentForm({ clientSecret, paymentIntentId, onSuccess, onCancel, amount }: PaymentFormProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsProcessing(true);
+
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/bookings',
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        toast.error(error.message || 'Payment failed');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        // Confirm booking with backend
+        const { data, error: confirmError } = await supabase.functions.invoke('confirm-booking', {
+          body: { paymentIntentId },
+        });
+
+        if (confirmError || data?.error) {
+          toast.error(data?.error || 'Failed to confirm booking');
+          setIsProcessing(false);
+          return;
+        }
+
+        toast.success('Booking confirmed! Payment successful.');
+        onSuccess();
+      }
+    } catch (err) {
+      console.error('Payment error:', err);
+      toast.error('Payment processing failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 bg-muted/50 rounded-lg">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-muted-foreground">Amount to pay</span>
+          <span className="text-xl font-bold text-primary">${(amount / 100).toLocaleString()}</span>
+        </div>
+        <PaymentElement />
+      </div>
+      
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={onCancel}
+          disabled={isProcessing}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="flex-1 gradient-primary"
+          disabled={!stripe || isProcessing}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Pay Now
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function BookingForm({ venue }: BookingFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const createBooking = useCreateBooking();
 
   const [date, setDate] = useState<Date | undefined>(addDays(new Date(), 1));
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
   const [guestCount, setGuestCount] = useState('2');
   const [notes, setNotes] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [paymentData, setPaymentData] = useState<{
+    clientSecret: string;
+    paymentIntentId: string;
+    amount: number;
+  } | null>(null);
 
   const timeSlots = Array.from({ length: 15 }, (_, i) => {
     const hour = i + 10;
@@ -43,7 +152,7 @@ export function BookingForm({ venue }: BookingFormProps) {
     return hours > 0 ? hours * venue.price_per_hour : 0;
   };
 
-  const handleSubmit = async () => {
+  const handleInitiatePayment = async () => {
     if (!user) {
       toast.error('Please sign in to book');
       navigate('/auth');
@@ -61,23 +170,86 @@ export function BookingForm({ venue }: BookingFormProps) {
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      await createBooking.mutateAsync({
-        venue_id: venue.id,
-        booking_date: format(date, 'yyyy-MM-dd'),
-        start_time: startTime,
-        end_time: endTime,
-        guest_count: parseInt(guestCount),
-        total_price: total,
-        notes: notes || undefined,
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          venue_id: venue.id,
+          booking_date: format(date, 'yyyy-MM-dd'),
+          start_time: startTime,
+          end_time: endTime,
+          guest_count: parseInt(guestCount),
+          total_price: total, // Price in cents
+          notes: notes || undefined,
+        },
       });
 
-      toast.success('Booking submitted successfully!');
-      navigate('/bookings');
-    } catch (error) {
-      toast.error('Failed to create booking');
+      if (error || data?.error) {
+        toast.error(data?.error || 'Failed to initiate payment');
+        setIsLoading(false);
+        return;
+      }
+
+      setPaymentData({
+        clientSecret: data.clientSecret,
+        paymentIntentId: data.paymentIntentId,
+        amount: data.amount,
+      });
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error('Failed to start booking process');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handlePaymentSuccess = () => {
+    navigate('/bookings');
+  };
+
+  const handleCancelPayment = () => {
+    setPaymentData(null);
+  };
+
+  if (paymentData) {
+    return (
+      <Card className="sticky top-24">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-primary" />
+            Complete Payment
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Elements 
+            stripe={stripePromise} 
+            options={{ 
+              clientSecret: paymentData.clientSecret,
+              appearance: {
+                theme: 'night',
+                variables: {
+                  colorPrimary: '#e91e63',
+                  colorBackground: '#1a1a2e',
+                  colorText: '#ffffff',
+                  colorDanger: '#ef4444',
+                  borderRadius: '8px',
+                },
+              },
+            }}
+          >
+            <PaymentForm
+              clientSecret={paymentData.clientSecret}
+              paymentIntentId={paymentData.paymentIntentId}
+              amount={paymentData.amount}
+              onSuccess={handlePaymentSuccess}
+              onCancel={handleCancelPayment}
+            />
+          </Elements>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="sticky top-24">
@@ -170,25 +342,35 @@ export function BookingForm({ venue }: BookingFormProps) {
         <div className="border-t border-border pt-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Price per hour</span>
-            <span>₮{venue.price_per_hour?.toLocaleString() || 0}</span>
+            <span>${venue.price_per_hour?.toLocaleString() || 0}</span>
           </div>
           <div className="flex justify-between font-semibold text-lg">
             <span>Total</span>
-            <span className="text-primary">₮{calculateTotal().toLocaleString()}</span>
+            <span className="text-primary">${calculateTotal().toLocaleString()}</span>
           </div>
         </div>
 
         <Button 
           className="w-full gradient-primary" 
           size="lg"
-          onClick={handleSubmit}
-          disabled={createBooking.isPending}
+          onClick={handleInitiatePayment}
+          disabled={isLoading}
         >
-          {createBooking.isPending ? 'Booking...' : 'Book Now'}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Checking availability...
+            </>
+          ) : (
+            <>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Pay & Confirm Booking
+            </>
+          )}
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">
-          You won't be charged yet. Payment will be processed after approval.
+          Instant confirmation. Your booking is confirmed immediately upon payment.
         </p>
       </CardContent>
     </Card>
