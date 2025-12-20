@@ -1,5 +1,6 @@
 export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
-export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type BookingStatus = 'confirmed' | 'cancelled';
+export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
 
 export interface Venue {
   id: string;
@@ -19,6 +20,8 @@ export interface Venue {
   rating: number;
   review_count: number;
   is_active: boolean;
+  vibe_tags: string[] | null;
+  price_tier: PriceTier;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +38,7 @@ export interface Booking {
   status: BookingStatus;
   payment_status: string;
   payment_method: string | null;
+  stripe_payment_intent_id: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -63,4 +67,22 @@ export const venueTypeColors: Record<VenueType, string> = {
   karaoke: 'bg-venue-karaoke',
   pool_snooker: 'bg-venue-pool',
   lounge: 'bg-venue-lounge',
+};
+
+export const vibeTags = [
+  'chill',
+  'luxury',
+  'energetic',
+  'romantic',
+  'family-friendly',
+  'live-music',
+  'sports',
+  'rooftop',
+] as const;
+
+export const priceTierLabels: Record<PriceTier, string> = {
+  budget: 'Budget',
+  moderate: 'Moderate',
+  premium: 'Premium',
+  luxury: 'Luxury',
 };

@@ -8,15 +8,12 @@ import { Calendar, Clock, MapPin, Users } from 'lucide-react';
 interface BookingCardProps {
   booking: Booking;
   showActions?: boolean;
-  onApprove?: (id: string) => void;
-  onReject?: (id: string) => void;
+  onCancel?: (id: string) => void;
 }
 
-export function BookingCard({ booking, showActions, onApprove, onReject }: BookingCardProps) {
+export function BookingCard({ booking, showActions, onCancel }: BookingCardProps) {
   const statusColors = {
-    pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-    approved: 'bg-green-500/10 text-green-600 border-green-500/20',
-    rejected: 'bg-red-500/10 text-red-600 border-red-500/20',
+    confirmed: 'bg-green-500/10 text-green-600 border-green-500/20',
     cancelled: 'bg-muted text-muted-foreground border-border',
   };
 
@@ -81,32 +78,22 @@ export function BookingCard({ booking, showActions, onApprove, onReject }: Booki
           <div className="flex flex-col items-end gap-2">
             <div className="text-right">
               <div className="text-lg font-semibold">
-                ₮{booking.total_price?.toLocaleString()}
+                ${(booking.total_price ? booking.total_price / 100 : 0).toLocaleString()}
               </div>
               <div className="text-xs text-muted-foreground">
                 {booking.payment_status}
               </div>
             </div>
 
-            {showActions && booking.status === 'pending' && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-green-600 border-green-500/30 hover:bg-green-500/10"
-                  onClick={() => onApprove?.(booking.id)}
-                >
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-600 border-red-500/30 hover:bg-red-500/10"
-                  onClick={() => onReject?.(booking.id)}
-                >
-                  Reject
-                </Button>
-              </div>
+            {showActions && booking.status === 'confirmed' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 border-red-500/30 hover:bg-red-500/10"
+                onClick={() => onCancel?.(booking.id)}
+              >
+                Cancel Booking
+              </Button>
             )}
           </div>
         </div>
