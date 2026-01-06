@@ -45,13 +45,12 @@ interface BookingWithDetails {
   payment_status: string;
   stripe_payment_intent_id: string | null;
   created_at: string;
+  guest_name: string | null;
+  guest_phone: string | null;
+  guest_email: string | null;
   venues: {
     name: string;
     city: string;
-  };
-  profiles: {
-    full_name: string;
-    email: string;
   };
 }
 
@@ -74,8 +73,7 @@ export default function AdminBookings() {
       .from('bookings')
       .select(`
         *,
-        venues:venue_id (name, city),
-        profiles:user_id (full_name, email)
+        venues:venue_id (name, city)
       `)
       .order('created_at', { ascending: false });
 
@@ -222,10 +220,10 @@ export default function AdminBookings() {
                         </div>
                         <div>
                           <p className="text-foreground text-sm font-medium">
-                            {booking.profiles?.full_name || 'Unknown'}
+                            {booking.guest_name || 'Unknown'}
                           </p>
                           <p className="text-muted-foreground text-xs">
-                            {booking.profiles?.email || '-'}
+                            {booking.guest_email || '-'}
                           </p>
                         </div>
                       </div>

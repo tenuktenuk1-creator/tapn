@@ -21,7 +21,7 @@ export function useUserBookings() {
         .order('booking_date', { ascending: false });
 
       if (error) throw error;
-      return data as Booking[];
+      return data as unknown as Booking[];
     },
     enabled: !!user,
   });
@@ -40,7 +40,7 @@ export function useAdminBookings() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Booking[];
+      return data as unknown as Booking[];
     },
   });
 }

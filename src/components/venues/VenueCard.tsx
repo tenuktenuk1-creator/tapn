@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, MapPin, Clock } from 'lucide-react';
-import { Venue, venueTypeLabels } from '@/types/venue';
+import { Venue, venueTypeLabels, priceTierLabels } from '@/types/venue';
 
 interface VenueCardProps {
   venue: Venue;
@@ -27,16 +27,6 @@ export function VenueCard({ venue }: VenueCardProps) {
     pool_snooker: 'bg-blue-500',
     lounge: 'bg-purple-500',
   };
-
-  // Generate price indicator
-  const getPriceIndicator = () => {
-    if (!venue.price_per_hour) return null;
-    if (venue.price_per_hour < 30000) return { text: '$', className: 'text-green-500' };
-    if (venue.price_per_hour < 60000) return { text: '$$', className: 'text-primary' };
-    return { text: '$$$', className: 'text-primary' };
-  };
-
-  const priceIndicator = getPriceIndicator();
 
   return (
     <div className="card-dark rounded-2xl overflow-hidden group">
@@ -78,13 +68,7 @@ export function VenueCard({ venue }: VenueCardProps) {
           {venue.name}
         </h3>
         
-        {venue.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-            {venue.description}
-          </p>
-        )}
-
-        {/* Rating & Price */}
+        {/* Rating & Price Tier */}
         <div className="flex items-center justify-between mb-4">
           {venue.rating && venue.rating > 0 ? (
             <div className="flex items-center gap-1">
@@ -97,10 +81,10 @@ export function VenueCard({ venue }: VenueCardProps) {
           ) : (
             <div />
           )}
-          {priceIndicator && (
-            <span className={`font-semibold ${priceIndicator.className}`}>
-              {priceIndicator.text}
-            </span>
+          {venue.price_tier && (
+            <Badge variant="outline" className="text-xs">
+              {priceTierLabels[venue.price_tier]}
+            </Badge>
           )}
         </div>
 
@@ -112,40 +96,21 @@ export function VenueCard({ venue }: VenueCardProps) {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>Open Now</span>
+            <span className={status === 'open' ? 'text-green-500' : status === 'booked' ? 'text-red-500' : ''}>
+              {status === 'open' ? 'Open Now' : status === 'booked' ? 'Fully Booked' : 'Busy'}
+            </span>
           </div>
         </div>
 
-        {/* Amenities */}
-        {venue.amenities && venue.amenities.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {venue.amenities.slice(0, 3).map((amenity) => (
-              <Badge 
-                key={amenity} 
-                variant="secondary" 
-                className="bg-secondary text-muted-foreground rounded-full text-xs"
-              >
-                {amenity}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Book Button */}
-        {status === 'booked' ? (
+        {/* View Details Button */}
+        <Link to={`/venues/${venue.id}`}>
           <Button 
-            disabled 
-            className="w-full rounded-xl bg-secondary text-muted-foreground"
+            variant="outline" 
+            className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10"
           >
-            Fully Booked
+            View Details
           </Button>
-        ) : (
-          <Link to={`/venues/${venue.id}`}>
-            <Button className="w-full rounded-xl gradient-primary text-primary-foreground">
-              Tap to Book
-            </Button>
-          </Link>
-        )}
+        </Link>
       </div>
     </div>
   );

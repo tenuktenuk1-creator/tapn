@@ -1,6 +1,6 @@
 import { Venue, venueTypeLabels } from '@/types/venue';
 import { Badge } from '@/components/ui/badge';
-import { Star, MapPin, Phone, Mail, Clock, Users } from 'lucide-react';
+import { Star, MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 interface VenueDetailHeaderProps {
   venue: Venue;
@@ -12,6 +12,35 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
     karaoke: 'bg-pink-500',
     pool_snooker: 'bg-blue-500',
     lounge: 'bg-primary',
+  };
+
+  // Format opening hours for display
+  const formatOpeningHours = () => {
+    if (!venue.opening_hours) return null;
+    
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    return days.map((day, index) => {
+      const hours = venue.opening_hours?.[day];
+      if (!hours) return { day: shortDays[index], hours: 'Closed' };
+      return { 
+        day: shortDays[index], 
+        hours: `${hours.open} - ${hours.close}` 
+      };
+    });
+  };
+
+  const openingHours = formatOpeningHours();
+
+  // Generate Google Maps embed URL
+  const getGoogleMapsEmbedUrl = () => {
+    if (venue.latitude && venue.longitude) {
+      return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${venue.latitude},${venue.longitude}&zoom=15`;
+    }
+    // Fallback to address search
+    const address = encodeURIComponent(`${venue.address}, ${venue.city}`);
+    return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${address}&zoom=15`;
   };
 
   return (
@@ -73,13 +102,17 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
             {venue.phone && (
               <div className="flex items-center gap-1.5">
                 <Phone className="h-4 w-4" />
-                <span>{venue.phone}</span>
+                <a href={`tel:${venue.phone}`} className="hover:text-primary transition-colors">
+                  {venue.phone}
+                </a>
               </div>
             )}
             {venue.email && (
               <div className="flex items-center gap-1.5">
                 <Mail className="h-4 w-4" />
-                <span>{venue.email}</span>
+                <a href={`mailto:${venue.email}`} className="hover:text-primary transition-colors">
+                  {venue.email}
+                </a>
               </div>
             )}
           </div>
@@ -93,17 +126,31 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
           {venue.price_per_hour && (
             <div>
               <span className="text-3xl font-display font-bold text-primary">
-                ₮{venue.price_per_hour.toLocaleString()}
+                ${venue.price_per_hour.toLocaleString()}
               </span>
               <span className="text-muted-foreground"> / hour</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground lg:justify-end">
-            <Clock className="h-4 w-4" />
-            <span>Open Now</span>
-          </div>
         </div>
       </div>
+
+      {/* Opening Hours */}
+      {openingHours && (
+        <div className="space-y-3">
+          <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            Opening Hours
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+            {openingHours.map(({ day, hours }) => (
+              <div key={day} className="card-dark rounded-lg p-3 text-center">
+                <div className="text-xs font-medium text-muted-foreground mb-1">{day}</div>
+                <div className="text-sm font-medium">{hours}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Amenities */}
       {venue.amenities && venue.amenities.length > 0 && (
@@ -118,6 +165,40 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
           </div>
         </div>
       )}
+
+      {/* Vibe Tags */}
+      {venue.vibe_tags && venue.vibe_tags.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-display font-semibold text-lg">Vibe</h3>
+          <div className="flex flex-wrap gap-2">
+            {venue.vibe_tags.map((tag, i) => (
+              <Badge key={i} className="gradient-primary border-0">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Google Maps */}
+      <div className="space-y-3">
+        <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-primary" />
+          Location
+        </h3>
+        <div className="rounded-2xl overflow-hidden border border-border h-[300px]">
+          <iframe
+            src={getGoogleMapsEmbedUrl()}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`${venue.name} location`}
+          />
+        </div>
+      </div>
     </div>
   );
 }

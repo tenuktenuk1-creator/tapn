@@ -20,6 +20,9 @@ export type Database = {
           created_at: string | null
           end_time: string
           guest_count: number | null
+          guest_email: string | null
+          guest_name: string | null
+          guest_phone: string | null
           id: string
           notes: string | null
           payment_method: string | null
@@ -29,7 +32,7 @@ export type Database = {
           stripe_payment_intent_id: string | null
           total_price: number | null
           updated_at: string | null
-          user_id: string
+          user_id: string | null
           venue_id: string
         }
         Insert: {
@@ -37,6 +40,9 @@ export type Database = {
           created_at?: string | null
           end_time: string
           guest_count?: number | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -46,7 +52,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           total_price?: number | null
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
           venue_id: string
         }
         Update: {
@@ -54,6 +60,9 @@ export type Database = {
           created_at?: string | null
           end_time?: string
           guest_count?: number | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
           id?: string
           notes?: string | null
           payment_method?: string | null
@@ -63,7 +72,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           total_price?: number | null
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
           venue_id?: string
         }
         Relationships: [
