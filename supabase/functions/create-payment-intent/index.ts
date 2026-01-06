@@ -17,33 +17,34 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-
   try {
     logStep("Function started");
 
-    // Authenticate user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    // Parse request body - NO AUTH REQUIRED (guest checkout)
+    const { 
+      venue_id, 
+      booking_date, 
+      start_time, 
+      end_time, 
+      guest_count, 
+      total_price, 
+      notes,
+      // Guest contact info
+      guest_name,
+      guest_phone,
+      guest_email 
+    } = await req.json();
     
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
-
-    // Parse request body
-    const { venue_id, booking_date, start_time, end_time, guest_count, total_price, notes } = await req.json();
-    logStep("Booking request received", { venue_id, booking_date, start_time, end_time, total_price });
+    logStep("Booking request received", { venue_id, booking_date, start_time, end_time, total_price, guest_email });
 
     // Validate required fields
     if (!venue_id || !booking_date || !start_time || !end_time || !total_price) {
       throw new Error("Missing required booking fields");
+    }
+
+    // Validate guest contact info
+    if (!guest_name || !guest_phone || !guest_email) {
+      throw new Error("Guest contact information is required (name, phone, email)");
     }
 
     // Check venue availability using service role for full access
@@ -78,8 +79,8 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Check if customer exists in Stripe
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    // Check if customer exists in Stripe by email
+    const customers = await stripe.customers.list({ email: guest_email, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
@@ -87,18 +88,19 @@ serve(async (req) => {
     } else {
       // Create new customer
       const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { supabase_user_id: user.id }
+        email: guest_email,
+        name: guest_name,
+        phone: guest_phone,
       });
       customerId = customer.id;
       logStep("Created new Stripe customer", { customerId });
     }
 
-    // Create PaymentIntent (amount in smallest currency unit - assuming MNT/cents)
+    // Create PaymentIntent (amount in smallest currency unit - cents)
     const amountInCents = Math.round(total_price);
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
-      currency: "usd", // Using USD for Stripe compatibility
+      currency: "usd",
       customer: customerId,
       metadata: {
         venue_id,
@@ -106,7 +108,9 @@ serve(async (req) => {
         start_time,
         end_time,
         guest_count: guest_count?.toString() || "1",
-        user_id: user.id,
+        guest_name,
+        guest_phone,
+        guest_email,
         notes: notes || "",
       },
       automatic_payment_methods: {
