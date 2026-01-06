@@ -8,7 +8,8 @@ import AuthPage from "./pages/Auth";
 import VenuesPage from "./pages/Venues";
 import VenueDetailPage from "./pages/VenueDetail";
 import BookingsPage from "./pages/Bookings";
-import ProfilePage from "./pages/Profile";
+import BookingSuccess from "./pages/BookingSuccess";
+import PlanANight from "./pages/PlanANight";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVenues from "./pages/admin/AdminVenues";
 import AdminVenueForm from "./pages/admin/AdminVenueForm";
@@ -29,7 +30,8 @@ const App = () => (
             <Route path="/venues" element={<VenuesPage />} />
             <Route path="/venues/:id" element={<VenueDetailPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/booking-success" element={<BookingSuccess />} />
+            <Route path="/plan-a-night" element={<PlanANight />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/venues" element={<AdminVenues />} />
             <Route path="/admin/venues/new" element={<AdminVenueForm />} />

@@ -38,10 +38,10 @@ export function Header() {
             Venues
           </Link>
           <Link 
-            to="/venues" 
+            to="/plan-a-night" 
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            Categories
+            Plan a Night
           </Link>
           <Link 
             to="/#how-it-works" 
@@ -134,11 +134,11 @@ export function Header() {
               Venues
             </Link>
             <Link 
-              to="/venues" 
+              to="/plan-a-night" 
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Categories
+              Plan a Night
             </Link>
             <Link 
               to="/#how-it-works" 

@@ -29,7 +29,7 @@ export interface Venue {
 export interface Booking {
   id: string;
   venue_id: string;
-  user_id: string;
+  user_id: string | null;
   booking_date: string;
   start_time: string;
   end_time: string;
@@ -42,6 +42,10 @@ export interface Booking {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // Guest contact info (for guest checkout)
+  guest_name: string | null;
+  guest_phone: string | null;
+  guest_email: string | null;
   venue?: Venue;
 }
 

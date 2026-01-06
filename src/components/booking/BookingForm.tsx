@@ -8,10 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Users, Clock, CreditCard, Loader2 } from 'lucide-react';
+import { CalendarIcon, Users, Clock, CreditCard, Loader2, User, Phone, Mail } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { Venue } from '@/types/venue';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
@@ -30,9 +29,10 @@ interface PaymentFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   amount: number;
+  guestEmail: string;
 }
 
-function PaymentForm({ clientSecret, paymentIntentId, onSuccess, onCancel, amount }: PaymentFormProps) {
+function PaymentForm({ clientSecret, paymentIntentId, onSuccess, onCancel, amount, guestEmail }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,7 +47,8 @@ function PaymentForm({ clientSecret, paymentIntentId, onSuccess, onCancel, amoun
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: window.location.origin + '/bookings',
+          return_url: window.location.origin + '/booking-success',
+          receipt_email: guestEmail,
         },
         redirect: 'if_required',
       });
@@ -70,7 +71,7 @@ function PaymentForm({ clientSecret, paymentIntentId, onSuccess, onCancel, amoun
           return;
         }
 
-        toast.success('Booking confirmed! Payment successful.');
+        toast.success('Booking confirmed! Check your email for confirmation.');
         onSuccess();
       }
     } catch (err) {
@@ -125,13 +126,18 @@ function PaymentForm({ clientSecret, paymentIntentId, onSuccess, onCancel, amoun
 
 export function BookingForm({ venue }: BookingFormProps) {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [date, setDate] = useState<Date | undefined>(addDays(new Date(), 1));
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
   const [guestCount, setGuestCount] = useState('2');
   const [notes, setNotes] = useState('');
+  
+  // Guest contact info (no auth required)
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<{
     clientSecret: string;
@@ -152,10 +158,22 @@ export function BookingForm({ venue }: BookingFormProps) {
     return hours > 0 ? hours * venue.price_per_hour : 0;
   };
 
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleInitiatePayment = async () => {
-    if (!user) {
-      toast.error('Please sign in to book');
-      navigate('/auth');
+    // Validate contact info
+    if (!guestName.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+    if (!guestPhone.trim()) {
+      toast.error('Please enter your phone number');
+      return;
+    }
+    if (!guestEmail.trim() || !validateEmail(guestEmail)) {
+      toast.error('Please enter a valid email address');
       return;
     }
 
@@ -180,8 +198,11 @@ export function BookingForm({ venue }: BookingFormProps) {
           start_time: startTime,
           end_time: endTime,
           guest_count: parseInt(guestCount),
-          total_price: total, // Price in cents
+          total_price: total,
           notes: notes || undefined,
+          guest_name: guestName.trim(),
+          guest_phone: guestPhone.trim(),
+          guest_email: guestEmail.trim().toLowerCase(),
         },
       });
 
@@ -205,7 +226,7 @@ export function BookingForm({ venue }: BookingFormProps) {
   };
 
   const handlePaymentSuccess = () => {
-    navigate('/bookings');
+    navigate('/booking-success');
   };
 
   const handleCancelPayment = () => {
@@ -242,6 +263,7 @@ export function BookingForm({ venue }: BookingFormProps) {
               clientSecret={paymentData.clientSecret}
               paymentIntentId={paymentData.paymentIntentId}
               amount={paymentData.amount}
+              guestEmail={guestEmail}
               onSuccess={handlePaymentSuccess}
               onCancel={handleCancelPayment}
             />
@@ -257,6 +279,56 @@ export function BookingForm({ venue }: BookingFormProps) {
         <CardTitle className="font-display">Book This Venue</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Contact Info Section */}
+        <div className="space-y-3 pb-4 border-b border-border">
+          <h4 className="text-sm font-medium text-muted-foreground">Your Contact Information</h4>
+          
+          <div className="space-y-2">
+            <Label htmlFor="guestName">Full Name *</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="guestName"
+                placeholder="John Doe"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="guestPhone">Phone Number *</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="guestPhone"
+                type="tel"
+                placeholder="+1 (555) 123-4567"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="guestEmail">Email Address *</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="guestEmail"
+                type="email"
+                placeholder="john@example.com"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Date Selection */}
         <div className="space-y-2">
           <Label>Date</Label>
           <Popover>
@@ -315,7 +387,7 @@ export function BookingForm({ venue }: BookingFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label>Number of Guests</Label>
+          <Label>Number of Guests (Optional)</Label>
           <div className="relative">
             <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
