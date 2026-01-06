@@ -17,27 +17,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-
   try {
     logStep("Function started");
 
-    // Authenticate user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
-
-    // Parse request body
+    // Parse request body - NO AUTH REQUIRED (guest checkout)
     const { paymentIntentId } = await req.json();
     if (!paymentIntentId) throw new Error("Payment intent ID is required");
     logStep("Confirming payment", { paymentIntentId });
@@ -58,14 +41,20 @@ serve(async (req) => {
       throw new Error(`Payment not completed. Status: ${paymentIntent.status}`);
     }
 
-    // Verify user matches
-    if (paymentIntent.metadata.user_id !== user.id) {
-      throw new Error("Payment does not belong to this user");
-    }
-
     // Extract booking data from payment intent metadata
-    const { venue_id, booking_date, start_time, end_time, guest_count, notes } = paymentIntent.metadata;
-    logStep("Extracted booking data", { venue_id, booking_date, start_time, end_time });
+    const { 
+      venue_id, 
+      booking_date, 
+      start_time, 
+      end_time, 
+      guest_count, 
+      notes,
+      guest_name,
+      guest_phone,
+      guest_email
+    } = paymentIntent.metadata;
+    
+    logStep("Extracted booking data", { venue_id, booking_date, start_time, end_time, guest_email });
 
     // Use service role for database operations
     const supabaseAdmin = createClient(
@@ -95,22 +84,24 @@ serve(async (req) => {
       throw new Error("This time slot was booked while you were paying. Your payment has been refunded.");
     }
 
-    // Create the confirmed booking
+    // Create the confirmed booking (guest booking - no user_id needed)
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
       .insert({
         venue_id,
-        user_id: user.id,
         booking_date,
         start_time,
         end_time,
         guest_count: parseInt(guest_count) || 1,
-        total_price: paymentIntent.amount, // Store in cents
+        total_price: paymentIntent.amount,
         status: "confirmed",
         payment_status: "paid",
         payment_method: "stripe",
         stripe_payment_intent_id: paymentIntentId,
         notes: notes || null,
+        guest_name,
+        guest_phone,
+        guest_email,
       })
       .select()
       .single();
@@ -133,6 +124,8 @@ serve(async (req) => {
         start_time: booking.start_time,
         end_time: booking.end_time,
         status: booking.status,
+        guest_name: booking.guest_name,
+        guest_email: booking.guest_email,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
