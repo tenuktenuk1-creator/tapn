@@ -127,17 +127,21 @@ export default function PlanANight() {
                     </SelectTrigger>
                     <SelectContent>
                       {isLoading ? (
-                        <SelectItem value="" disabled>Loading...</SelectItem>
-                      ) : venues?.map(venue => (
-                        <SelectItem key={venue.id} value={venue.id}>
-                          <div className="flex items-center gap-2">
-                            <span>{venue.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              ({venueTypeLabels[venue.venue_type]})
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                        <div className="py-2 px-3 text-sm text-muted-foreground">Loading...</div>
+                      ) : venues && venues.length > 0 ? (
+                        venues.map(venue => (
+                          <SelectItem key={venue.id} value={venue.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{venue.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({venueTypeLabels[venue.venue_type]})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="py-2 px-3 text-sm text-muted-foreground">No venues available</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
