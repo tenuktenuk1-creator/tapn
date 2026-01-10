@@ -50,7 +50,7 @@ export function Header() {
             How It Works
           </Link>
           <Link 
-            to="/#partner" 
+            to="/partner"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Partner With Us
@@ -148,7 +148,7 @@ export function Header() {
               How It Works
             </Link>
             <Link 
-              to="/#partner" 
+              to="/partner" 
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
