@@ -16,8 +16,8 @@ import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-// Initialize Stripe with publishable key
-const stripePromise = loadStripe('pk_test_51RTEwdPMBd6oo5i5g20h6PN3ZUxnI1UlFqJQbgSUmRPfPVSKL2xD8X27NZcyLWPXFMnL0PnHD0NrYvmW2OelZxPH00F1xQgCRB');
+// Initialize Stripe with publishable key from environment variable
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface BookingFormProps {
   venue: PublicVenue;
