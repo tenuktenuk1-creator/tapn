@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -9,13 +8,12 @@ const corsHeaders = {
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-PAYMENT-INTENT] ${step}${detailsStr}`);
+  console.log(`[CREATE-BOOKING] ${step}${detailsStr}`);
 };
 
 // Simple in-memory rate limiting (resets on function cold start)
-// For production, consider using Redis or database-backed rate limiting
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_MAX = 10; // Max requests
+const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
@@ -35,25 +33,21 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
   return { allowed: true, remaining: RATE_LIMIT_MAX - record.count };
 }
 
-// Server-side email validation
+// Server-side validations
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   return emailRegex.test(email) && email.length <= 254;
 }
 
-// Server-side phone validation (basic)
 function isValidPhone(phone: string): boolean {
-  // Allow digits, spaces, dashes, parentheses, and + for international
   const phoneRegex = /^[\d\s\-\+\(\)]{7,20}$/;
   return phoneRegex.test(phone);
 }
 
-// Server-side name validation
 function isValidName(name: string): boolean {
   return name.length >= 2 && name.length <= 100 && /^[a-zA-Z\s\-'.]+$/.test(name);
 }
 
-// Sanitize string input
 function sanitizeString(input: string): string {
   return input.trim().replace(/[<>]/g, '');
 }
@@ -63,7 +57,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get client IP for rate limiting and logging
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
                    req.headers.get("cf-connecting-ip") || 
                    "unknown";
@@ -88,7 +81,7 @@ serve(async (req) => {
       });
     }
 
-    // Parse request body - NO AUTH REQUIRED (guest checkout)
+    // Parse request body
     const body = await req.json();
     const { 
       venue_id, 
@@ -98,7 +91,6 @@ serve(async (req) => {
       guest_count, 
       total_price, 
       notes,
-      // Guest contact info
       guest_name,
       guest_phone,
       guest_email 
@@ -111,7 +103,6 @@ serve(async (req) => {
       throw new Error("Missing required booking fields");
     }
 
-    // Validate guest contact info exists
     if (!guest_name || !guest_phone || !guest_email) {
       throw new Error("Guest contact information is required (name, phone, email)");
     }
@@ -165,19 +156,20 @@ serve(async (req) => {
 
     logStep("Input validation passed");
 
-    // Check venue availability using service role for full access
+    // Use service role for database operations
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
+    // Check venue availability
     const { data: existingBookings, error: checkError } = await supabaseAdmin
       .from("bookings")
       .select("id")
       .eq("venue_id", venue_id)
       .eq("booking_date", booking_date)
-      .eq("status", "confirmed")
+      .in("status", ["confirmed", "pending"])
       .or(`start_time.lt.${end_time},end_time.gt.${start_time}`);
 
     if (checkError) {
@@ -192,65 +184,50 @@ serve(async (req) => {
 
     logStep("Time slot available");
 
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
-    });
-
-    // Check if customer exists in Stripe by email
-    const customers = await stripe.customers.list({ email: sanitizedEmail, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Found existing Stripe customer", { customerId });
-    } else {
-      // Create new customer
-      const customer = await stripe.customers.create({
-        email: sanitizedEmail,
-        name: sanitizedName,
-        phone: sanitizedPhone,
-      });
-      customerId = customer.id;
-      logStep("Created new Stripe customer", { customerId });
-    }
-
-    // Generate a secure booking lookup token for guest access
+    // Generate a booking lookup token for guest access
     const bookingLookupToken = crypto.randomUUID();
 
-    // Create PaymentIntent (amount in smallest currency unit - cents)
-    const amountInCents = Math.round(total_price);
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInCents,
-      currency: "usd",
-      customer: customerId,
-      metadata: {
+    // Create the booking (pending status - payment collected at venue)
+    const { data: booking, error: bookingError } = await supabaseAdmin
+      .from("bookings")
+      .insert({
         venue_id,
         booking_date,
         start_time,
         end_time,
-        guest_count: parsedGuestCount.toString(),
+        guest_count: parsedGuestCount,
+        total_price: Math.round(total_price * 100), // Store in cents for consistency
+        status: "pending",
+        payment_status: "pending",
+        payment_method: "pay_at_venue",
+        notes: sanitizedNotes ? `${sanitizedNotes}\n---\nLookup Token: ${bookingLookupToken}` : `Lookup Token: ${bookingLookupToken}`,
         guest_name: sanitizedName,
         guest_phone: sanitizedPhone,
         guest_email: sanitizedEmail,
-        notes: sanitizedNotes || "",
-        booking_lookup_token: bookingLookupToken,
-        client_ip: clientIp,
-      },
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
+      })
+      .select()
+      .single();
 
-    logStep("PaymentIntent created", { 
-      paymentIntentId: paymentIntent.id, 
-      amount: amountInCents,
-      clientSecret: paymentIntent.client_secret?.substring(0, 20) + "..."
-    });
+    if (bookingError) {
+      logStep("Error creating booking", { error: bookingError.message });
+      throw new Error("Failed to create booking. Please try again.");
+    }
+
+    logStep("Booking created successfully", { bookingId: booking.id, clientIp });
 
     return new Response(JSON.stringify({ 
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-      amount: amountInCents
+      success: true,
+      booking: {
+        id: booking.id,
+        venue_id: booking.venue_id,
+        booking_date: booking.booking_date,
+        start_time: booking.start_time,
+        end_time: booking.end_time,
+        status: booking.status,
+        guest_name: booking.guest_name,
+        guest_email: booking.guest_email,
+        lookup_token: bookingLookupToken,
+      }
     }), {
       headers: { 
         ...corsHeaders, 

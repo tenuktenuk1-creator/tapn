@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -74,34 +73,13 @@ serve(async (req) => {
       throw new Error("This booking is already cancelled");
     }
 
-    logStep("Booking found", { 
-      status: booking.status, 
-      paymentIntentId: booking.stripe_payment_intent_id 
-    });
-
-    // Refund if payment was made
-    if (booking.stripe_payment_intent_id && booking.payment_status === "paid") {
-      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-        apiVersion: "2025-08-27.basil",
-      });
-
-      try {
-        const refund = await stripe.refunds.create({
-          payment_intent: booking.stripe_payment_intent_id,
-        });
-        logStep("Refund created", { refundId: refund.id, amount: refund.amount });
-      } catch (refundError) {
-        logStep("Refund failed", { error: String(refundError) });
-        // Continue with cancellation even if refund fails - can be handled manually
-      }
-    }
+    logStep("Booking found", { status: booking.status });
 
     // Update booking status
     const { data: updatedBooking, error: updateError } = await supabaseAdmin
       .from("bookings")
       .update({ 
         status: "cancelled",
-        payment_status: "refunded",
         updated_at: new Date().toISOString()
       })
       .eq("id", bookingId)
@@ -118,8 +96,7 @@ serve(async (req) => {
       success: true,
       booking: {
         id: updatedBooking.id,
-        status: updatedBooking.status,
-        payment_status: updatedBooking.payment_status
+        status: updatedBooking.status
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
