@@ -80,6 +80,13 @@ export type Database = {
             foreignKeyName: "bookings_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -111,6 +118,13 @@ export type Database = {
           venue_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "partner_venues_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "public_venues"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partner_venues_venue_id_fkey"
             columns: ["venue_id"]
@@ -245,7 +259,72 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_venues: {
+        Row: {
+          address: string | null
+          amenities: string[] | null
+          city: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          images: string[] | null
+          is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          opening_hours: Json | null
+          price_per_hour: number | null
+          price_tier: string | null
+          rating: number | null
+          review_count: number | null
+          updated_at: string | null
+          venue_type: Database["public"]["Enums"]["venue_type"] | null
+          vibe_tags: string[] | null
+        }
+        Insert: {
+          address?: string | null
+          amenities?: string[] | null
+          city?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          images?: string[] | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          opening_hours?: Json | null
+          price_per_hour?: number | null
+          price_tier?: string | null
+          rating?: number | null
+          review_count?: number | null
+          updated_at?: string | null
+          venue_type?: Database["public"]["Enums"]["venue_type"] | null
+          vibe_tags?: string[] | null
+        }
+        Update: {
+          address?: string | null
+          amenities?: string[] | null
+          city?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          images?: string[] | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          opening_hours?: Json | null
+          price_per_hour?: number | null
+          price_tier?: string | null
+          rating?: number | null
+          review_count?: number | null
+          updated_at?: string | null
+          venue_type?: Database["public"]["Enums"]["venue_type"] | null
+          vibe_tags?: string[] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
