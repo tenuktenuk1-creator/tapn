@@ -2,10 +2,10 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, MapPin, Clock } from 'lucide-react';
-import { Venue, venueTypeLabels, priceTierLabels } from '@/types/venue';
+import { PublicVenue, venueTypeLabels, priceTierLabels } from '@/types/venue';
 
 interface VenueCardProps {
-  venue: Venue;
+  venue: PublicVenue;
 }
 
 type VenueStatus = 'open' | 'busy' | 'booked';
