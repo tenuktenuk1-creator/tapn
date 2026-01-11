@@ -18,7 +18,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useVenues } from '@/hooks/useVenues';
-import { Venue, venueTypeLabels } from '@/types/venue';
+import { PublicVenue, venueTypeLabels } from '@/types/venue';
 import { 
   Select, 
   SelectContent, 
@@ -29,7 +29,7 @@ import {
 
 interface PlannedStop {
   id: string;
-  venue: Venue;
+  venue: PublicVenue;
   startTime: string;
   endTime: string;
 }

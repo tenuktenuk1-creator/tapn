@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Users, Clock, CreditCard, Loader2, User, Phone, Mail } from 'lucide-react';
 import { format, addDays } from 'date-fns';
-import { Venue } from '@/types/venue';
+import { PublicVenue } from '@/types/venue';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
@@ -20,7 +20,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 const stripePromise = loadStripe('pk_test_51RTEwdPMBd6oo5i5g20h6PN3ZUxnI1UlFqJQbgSUmRPfPVSKL2xD8X27NZcyLWPXFMnL0PnHD0NrYvmW2OelZxPH00F1xQgCRB');
 
 interface BookingFormProps {
-  venue: Venue;
+  venue: PublicVenue;
 }
 
 interface PaymentFormProps {

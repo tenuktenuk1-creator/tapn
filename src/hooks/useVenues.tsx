@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Venue, VenueType } from '@/types/venue';
+import { Venue, PublicVenue, VenueType } from '@/types/venue';
 
 interface VenueFilters {
   search?: string;
@@ -10,14 +10,14 @@ interface VenueFilters {
   maxPrice?: number;
 }
 
+// Use the public_venues view for public access (excludes sensitive contact info)
 export function useVenues(filters?: VenueFilters) {
   return useQuery({
-    queryKey: ['venues', filters],
+    queryKey: ['public-venues', filters],
     queryFn: async () => {
       let query = supabase
-        .from('venues')
+        .from('public_venues')
         .select('*')
-        .eq('is_active', true)
         .order('rating', { ascending: false });
 
       if (filters?.search) {
@@ -43,12 +43,33 @@ export function useVenues(filters?: VenueFilters) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as Venue[];
+      return data as PublicVenue[];
     },
   });
 }
 
+// Use the public_venues view for single venue details (public access)
 export function useVenue(id: string | undefined) {
+  return useQuery({
+    queryKey: ['public-venue', id],
+    queryFn: async () => {
+      if (!id) return null;
+
+      const { data, error } = await supabase
+        .from('public_venues')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as PublicVenue | null;
+    },
+    enabled: !!id,
+  });
+}
+
+// Use the full venues table for authorized users (partners/admins) to see contact info
+export function useFullVenue(id: string | undefined) {
   return useQuery({
     queryKey: ['venue', id],
     queryFn: async () => {

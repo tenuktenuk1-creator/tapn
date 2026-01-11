@@ -1,9 +1,9 @@
-import { Venue, venueTypeLabels } from '@/types/venue';
+import { PublicVenue, venueTypeLabels } from '@/types/venue';
 import { Badge } from '@/components/ui/badge';
-import { Star, MapPin, Phone, Mail, Clock } from 'lucide-react';
+import { Star, MapPin, Clock } from 'lucide-react';
 
 interface VenueDetailHeaderProps {
-  venue: Venue;
+  venue: PublicVenue;
 }
 
 export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
@@ -99,22 +99,6 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
               <MapPin className="h-4 w-4" />
               <span>{venue.address}, {venue.city}</span>
             </div>
-            {venue.phone && (
-              <div className="flex items-center gap-1.5">
-                <Phone className="h-4 w-4" />
-                <a href={`tel:${venue.phone}`} className="hover:text-primary transition-colors">
-                  {venue.phone}
-                </a>
-              </div>
-            )}
-            {venue.email && (
-              <div className="flex items-center gap-1.5">
-                <Mail className="h-4 w-4" />
-                <a href={`mailto:${venue.email}`} className="hover:text-primary transition-colors">
-                  {venue.email}
-                </a>
-              </div>
-            )}
           </div>
 
           {venue.description && (

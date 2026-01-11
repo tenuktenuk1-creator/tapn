@@ -2,7 +2,8 @@ export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
 export type BookingStatus = 'confirmed' | 'cancelled';
 export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
 
-export interface Venue {
+// Public venue data (excludes sensitive contact info)
+export interface PublicVenue {
   id: string;
   name: string;
   description: string | null;
@@ -11,8 +12,6 @@ export interface Venue {
   city: string;
   latitude: number | null;
   longitude: number | null;
-  phone: string | null;
-  email: string | null;
   price_per_hour: number | null;
   opening_hours: Record<string, { open: string; close: string }> | null;
   amenities: string[] | null;
@@ -24,6 +23,12 @@ export interface Venue {
   price_tier: PriceTier;
   created_at: string;
   updated_at: string;
+}
+
+// Full venue data (includes sensitive contact info - only for authorized users)
+export interface Venue extends PublicVenue {
+  phone: string | null;
+  email: string | null;
 }
 
 export interface Booking {
