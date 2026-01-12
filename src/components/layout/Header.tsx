@@ -61,13 +61,6 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
-              <Link 
-                to="/bookings" 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                My Bookings
-              </Link>
-              
               {isAdmin && (
                 <Link 
                   to="/admin" 
@@ -95,7 +88,7 @@ export function Header() {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
@@ -103,13 +96,21 @@ export function Header() {
               </DropdownMenu>
             </>
           ) : (
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/auth')}
-              className="bg-foreground text-background hover:bg-foreground/90 border-0 rounded-full px-6"
-            >
-              Sign In
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/auth')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Sign In
+              </Button>
+              <Button 
+                onClick={() => navigate('/auth?mode=signup')}
+                className="gradient-primary rounded-full px-6"
+              >
+                Sign Up
+              </Button>
+            </div>
           )}
         </div>
 
@@ -158,11 +159,11 @@ export function Header() {
             {user ? (
               <>
                 <Link 
-                  to="/bookings" 
+                  to="/profile" 
                   className="py-2 text-sm font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  My Bookings
+                  My Profile
                 </Link>
                 
                 {isAdmin && (
@@ -177,25 +178,36 @@ export function Header() {
                 
                 <Button 
                   variant="ghost" 
-                  className="justify-start px-0" 
+                  className="justify-start px-0 text-destructive hover:text-destructive" 
                   onClick={() => {
                     handleSignOut();
                     setMobileMenuOpen(false);
                   }}
                 >
+                  <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
                 </Button>
               </>
             ) : (
               <div className="flex flex-col gap-2 pt-2">
                 <Button 
+                  variant="outline"
                   onClick={() => {
                     navigate('/auth');
                     setMobileMenuOpen(false);
                   }}
-                  className="bg-foreground text-background hover:bg-foreground/90"
+                  className="border-border"
                 >
                   Sign In
+                </Button>
+                <Button 
+                  onClick={() => {
+                    navigate('/auth?mode=signup');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="gradient-primary"
+                >
+                  Sign Up
                 </Button>
               </div>
             )}

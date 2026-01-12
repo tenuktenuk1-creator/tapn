@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { MapPin } from 'lucide-react';
 
 const authSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -17,7 +18,8 @@ const authSchema = z.object({
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { signIn, signUp, user } = useAuth();
+  const location = useLocation();
+  const { signIn, signUp } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(searchParams.get('mode') === 'signup');
   const [email, setEmail] = useState('');
@@ -25,10 +27,8 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (user) {
-    navigate('/');
-    return null;
-  }
+  // Get the redirect destination from state, default to /profile
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/profile';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +52,7 @@ export default function AuthPage() {
           toast.error(error.message);
         } else {
           toast.success('Account created successfully!');
-          navigate('/');
+          navigate(from, { replace: true });
         }
       } else {
         const { error } = await signIn(email, password);
@@ -60,7 +60,7 @@ export default function AuthPage() {
           toast.error(error.message);
         } else {
           toast.success('Welcome back!');
-          navigate('/');
+          navigate(from, { replace: true });
         }
       }
     } finally {
@@ -70,10 +70,10 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md border-border">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 h-12 w-12 rounded-xl gradient-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-display font-bold text-xl">T</span>
+            <MapPin className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="font-display text-2xl">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
@@ -87,16 +87,39 @@ export default function AuthPage() {
             {isSignUp && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
+                <Input 
+                  id="name" 
+                  value={fullName} 
+                  onChange={(e) => setFullName(e.target.value)} 
+                  placeholder="John Doe" 
+                  required 
+                  className="bg-secondary border-border"
+                />
               </div>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="you@example.com" 
+                required 
+                className="bg-secondary border-border"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+              <Input 
+                id="password" 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                placeholder="••••••••" 
+                required 
+                className="bg-secondary border-border"
+              />
             </div>
             <Button type="submit" className="w-full gradient-primary" disabled={loading}>
               {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
