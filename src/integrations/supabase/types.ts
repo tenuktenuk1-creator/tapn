@@ -134,6 +134,80 @@ export type Database = {
           },
         ]
       }
+      planned_nights: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          planned_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          planned_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          planned_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      planned_stops: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          notes: string | null
+          order_index: number
+          planned_night_id: string
+          start_time: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          order_index?: number
+          planned_night_id: string
+          start_time: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          order_index?: number
+          planned_night_id?: string
+          start_time?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planned_stops_planned_night_id_fkey"
+            columns: ["planned_night_id"]
+            isOneToOne: false
+            referencedRelation: "planned_nights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

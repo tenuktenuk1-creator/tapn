@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { format, parseISO, isAfter, isBefore } from 'date-fns';
+import { PlannedNightsSection } from '@/components/profile/PlannedNightsSection';
 
 const profileSchema = z.object({
   full_name: z.string().trim().max(100, 'Name must be less than 100 characters').optional(),
@@ -345,6 +346,9 @@ export default function ProfilePage() {
                 </Tabs>
               </CardContent>
             </Card>
+
+            {/* Planned Nights Section */}
+            <PlannedNightsSection />
 
             {/* Account Actions */}
             <Card className="card-dark border-border">

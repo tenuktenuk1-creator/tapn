@@ -1,23 +1,28 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
   Plus, 
   Trash2, 
   Clock, 
   MapPin, 
-  GripVertical,
-  Calendar,
+  Calendar as CalendarIcon,
   Moon,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { useVenues } from '@/hooks/useVenues';
+import { useAuth } from '@/hooks/useAuth';
+import { useCreatePlannedNight } from '@/hooks/usePlannedNights';
 import { PublicVenue, venueTypeLabels } from '@/types/venue';
 import { 
   Select, 
@@ -26,6 +31,9 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface PlannedStop {
   id: string;
@@ -35,11 +43,17 @@ interface PlannedStop {
 }
 
 export default function PlanANight() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: venues, isLoading } = useVenues();
+  const createPlannedNight = useCreatePlannedNight();
+  
   const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
+  const [planName, setPlanName] = useState('');
+  const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
 
   const timeSlots = Array.from({ length: 12 }, (_, i) => {
     const hour = i + 14;
@@ -84,6 +98,45 @@ export default function PlanANight() {
     return total;
   };
 
+  const handleSavePlan = async () => {
+    if (!user) {
+      toast.error('Please sign in to save your plan');
+      navigate('/auth');
+      return;
+    }
+
+    if (!plannedDate) {
+      toast.error('Please select a date for your night out');
+      return;
+    }
+
+    if (plannedStops.length === 0) {
+      toast.error('Please add at least one venue to your plan');
+      return;
+    }
+
+    const name = planName.trim() || `Night Out - ${format(plannedDate, 'MMM d')}`;
+
+    try {
+      await createPlannedNight.mutateAsync({
+        name,
+        planned_date: format(plannedDate, 'yyyy-MM-dd'),
+        stops: plannedStops.map((stop, index) => ({
+          venue_id: stop.venue.id,
+          start_time: stop.startTime,
+          end_time: stop.endTime,
+          order_index: index,
+        })),
+      });
+
+      toast.success('Night plan saved successfully!');
+      navigate('/profile');
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      toast.error('Failed to save plan');
+    }
+  };
+
   const venueTypeColorMap: Record<string, string> = {
     cafe: 'bg-orange-500',
     karaoke: 'bg-pink-500',
@@ -110,8 +163,57 @@ export default function PlanANight() {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Add Venue Panel */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
+          <div className="lg:col-span-1 space-y-4">
+            {/* Plan Details Card */}
+            <Card className="card-dark border-border">
+              <CardHeader>
+                <CardTitle className="font-display flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-primary" />
+                  Plan Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Plan Name (optional)</Label>
+                  <Input
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    placeholder="e.g., Birthday Night Out"
+                    className="bg-secondary border-border"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal bg-secondary border-border",
+                          !plannedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {plannedDate ? format(plannedDate, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={plannedDate}
+                        onSelect={setPlannedDate}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Add Stop Card */}
+            <Card className="sticky top-24 card-dark border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
                   <Plus className="h-5 w-5 text-primary" />
@@ -122,7 +224,7 @@ export default function PlanANight() {
                 <div className="space-y-2">
                   <Label>Select Venue</Label>
                   <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Choose a venue..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -150,7 +252,7 @@ export default function PlanANight() {
                   <div className="space-y-2">
                     <Label>Start Time</Label>
                     <Select value={startTime} onValueChange={setStartTime}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-secondary border-border">
                         <Clock className="mr-2 h-4 w-4" />
                         <SelectValue />
                       </SelectTrigger>
@@ -167,7 +269,7 @@ export default function PlanANight() {
                   <div className="space-y-2">
                     <Label>End Time</Label>
                     <Select value={endTime} onValueChange={setEndTime}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-secondary border-border">
                         <Clock className="mr-2 h-4 w-4" />
                         <SelectValue />
                       </SelectTrigger>
@@ -200,10 +302,10 @@ export default function PlanANight() {
 
           {/* Timeline */}
           <div className="lg:col-span-2">
-            <Card>
+            <Card className="card-dark border-border">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="font-display flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
+                  <CalendarIcon className="h-5 w-5 text-primary" />
                   Your Night Timeline
                 </CardTitle>
                 {plannedStops.length > 0 && (
@@ -230,7 +332,7 @@ export default function PlanANight() {
                           <div className="absolute left-6 top-full h-4 w-0.5 bg-border" />
                         )}
                         
-                        <div className="card-dark rounded-xl p-4 flex items-center gap-4">
+                        <div className="rounded-xl p-4 flex items-center gap-4 bg-secondary/50 border border-border">
                           {/* Order number */}
                           <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold">
                             {index + 1}
@@ -280,9 +382,9 @@ export default function PlanANight() {
                       </div>
                     ))}
 
-                    {/* Summary */}
+                    {/* Summary & Save */}
                     <div className="mt-6 pt-6 border-t border-border">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-6">
                         <div>
                           <p className="text-sm text-muted-foreground">Total Stops</p>
                           <p className="font-display font-semibold text-xl">{plannedStops.length} venues</p>
@@ -295,9 +397,30 @@ export default function PlanANight() {
                         </div>
                       </div>
                       
-                      <p className="text-xs text-center text-muted-foreground mt-4">
-                        Book each venue individually when you're ready to confirm your night
-                      </p>
+                      <Button 
+                        className="w-full gradient-primary"
+                        size="lg"
+                        onClick={handleSavePlan}
+                        disabled={createPlannedNight.isPending || plannedStops.length === 0 || !plannedDate}
+                      >
+                        {createPlannedNight.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Plan
+                          </>
+                        )}
+                      </Button>
+                      
+                      {!user && (
+                        <p className="text-xs text-center text-muted-foreground mt-3">
+                          <Link to="/auth" className="text-primary hover:underline">Sign in</Link> to save your plan
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
