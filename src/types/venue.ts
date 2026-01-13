@@ -1,6 +1,7 @@
 export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
 export type BookingStatus = 'confirmed' | 'cancelled';
 export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
+export type PlannedNightStatus = 'upcoming' | 'completed' | 'cancelled';
 
 // Public venue data (excludes sensitive contact info)
 export interface PublicVenue {
@@ -64,6 +65,30 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface PlannedStop {
+  id: string;
+  planned_night_id: string;
+  venue_id: string;
+  start_time: string;
+  end_time: string;
+  order_index: number;
+  notes: string | null;
+  created_at: string;
+  venue?: PublicVenue;
+}
+
+export interface PlannedNight {
+  id: string;
+  user_id: string;
+  name: string;
+  planned_date: string;
+  status: PlannedNightStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  stops?: PlannedStop[];
+}
+
 export const venueTypeLabels: Record<VenueType, string> = {
   cafe: 'Cafe',
   karaoke: 'Karaoke',
@@ -94,4 +119,10 @@ export const priceTierLabels: Record<PriceTier, string> = {
   moderate: 'Moderate',
   premium: 'Premium',
   luxury: 'Luxury',
+};
+
+export const plannedNightStatusLabels: Record<PlannedNightStatus, string> = {
+  upcoming: 'Upcoming',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
