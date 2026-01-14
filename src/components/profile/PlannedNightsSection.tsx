@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePlannedNights, useDeletePlannedNight, useUpdatePlannedNight } from '@/hooks/usePlannedNights';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { format, parseISO, isAfter, isBefore, isToday } from 'date-fns';
+import { format, isAfter, isBefore, isToday } from 'date-fns';
 import { venueTypeLabels } from '@/types/venue';
 import { toast } from 'sonner';
 import {
@@ -38,10 +39,10 @@ export function PlannedNightsSection() {
 
   const now = new Date();
   const upcomingNights = plannedNights.filter(
-    n => n.status === 'upcoming' && (isAfter(parseISO(n.planned_date), now) || isToday(parseISO(n.planned_date)))
+    n => n.status === 'upcoming' && (isAfter(new Date(n.planned_date), now) || isToday(new Date(n.planned_date)))
   );
   const pastNights = plannedNights.filter(
-    n => n.status !== 'upcoming' || (isBefore(parseISO(n.planned_date), now) && !isToday(parseISO(n.planned_date)))
+    n => n.status !== 'upcoming' || (isBefore(new Date(n.planned_date), now) && !isToday(new Date(n.planned_date)))
   );
 
   const handleDelete = async (id: string) => {
@@ -202,7 +203,7 @@ function PlannedNightCard({
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {format(parseISO(night.planned_date), 'EEEE, MMM d, yyyy')}
+            {format(new Date(night.planned_date), 'EEEE, MMM d, yyyy')}
           </span>
           <span className="flex items-center gap-1">
             <MapPin className="h-3 w-3" />

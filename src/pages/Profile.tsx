@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { format, parseISO, isAfter, isBefore } from 'date-fns';
+import { format, isAfter, isBefore } from 'date-fns';
 import { PlannedNightsSection } from '@/components/profile/PlannedNightsSection';
 
 const profileSchema = z.object({
@@ -91,10 +91,9 @@ export default function ProfilePage() {
       phone: formData.phone || undefined,
       avatar_url: formData.avatar_url || undefined,
     });
-
     if (!validationResult.success) {
       const fieldErrors: Record<string, string> = {};
-      validationResult.error.errors.forEach((err) => {
+      validationResult.error.issues.forEach((err) => {
         if (err.path[0]) {
           fieldErrors[err.path[0] as string] = err.message;
         }
@@ -159,8 +158,8 @@ export default function ProfilePage() {
   // Filter bookings
   const now = new Date();
   const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-  const upcomingBookings = confirmedBookings.filter(b => isAfter(parseISO(b.booking_date), now) || format(parseISO(b.booking_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
-  const pastBookings = confirmedBookings.filter(b => isBefore(parseISO(b.booking_date), now) && format(parseISO(b.booking_date), 'yyyy-MM-dd') !== format(now, 'yyyy-MM-dd'));
+  const upcomingBookings = confirmedBookings.filter(b => isAfter(new Date(b.booking_date), now) || format(new Date(b.booking_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
+  const pastBookings = confirmedBookings.filter(b => isBefore(new Date(b.booking_date), now) && format(new Date(b.booking_date), 'yyyy-MM-dd') !== format(now, 'yyyy-MM-dd'));
 
   return (
     <Layout>
@@ -399,7 +398,7 @@ function BookingItem({ booking, getStatusBadge, onViewDetails }: BookingItemProp
         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {format(parseISO(booking.booking_date), 'MMM d, yyyy')}
+            {format(new Date(booking.booking_date), 'MMM d, yyyy')}
           </span>
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />

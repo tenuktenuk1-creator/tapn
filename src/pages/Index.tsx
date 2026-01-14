@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,9 +22,12 @@ import {
   Beer,
   Sofa,
   Music,
-  Activity
+  Activity,
+  Flame
 } from 'lucide-react';
-import { useState } from 'react';
+import { useVenues } from '@/hooks/useVenues';
+import { VenueCard } from '@/components/venues/VenueCard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const howItWorksSteps = [
   { 
@@ -97,6 +101,10 @@ const bookingFeatures = [
 export default function Index() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: venues, isLoading } = useVenues();
+
+  // Get top 3 rated venues
+  const trendingVenues = venues?.slice(0, 3) || [];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +195,50 @@ export default function Index() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Trending Now Section */}
+      <section className="py-24 bg-secondary/20">
+        <div className="container">
+          <div className="flex flex-col md:flex-row items-center justify-between mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 md:mb-0">
+              <span className="text-foreground">Trending </span>
+              <span className="text-gradient">Now</span>
+              <Flame className="inline-block ml-2 h-8 w-8 text-orange-500 fill-orange-500 animate-pulse" />
+            </h2>
+            <Link to="/venues">
+              <Button variant="outline" className="rounded-full">
+                View All Venues <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="card-dark rounded-2xl overflow-hidden">
+                  <Skeleton className="aspect-[4/3]" />
+                  <div className="p-5 space-y-3">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : trendingVenues.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {trendingVenues.map((venue) => (
+                <VenueCard key={venue.id} venue={venue} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              No venues found.
+            </div>
+          )}
         </div>
       </section>
 
