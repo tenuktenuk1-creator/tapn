@@ -52,7 +52,6 @@ export default function PlanANight() {
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
-  const [planName, setPlanName] = useState('');
   const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
 
   const timeSlots = Array.from({ length: 12 }, (_, i) => {
@@ -115,7 +114,8 @@ export default function PlanANight() {
       return;
     }
 
-    const name = planName.trim() || `Night Out - ${format(plannedDate, 'MMM d')}`;
+    // Auto-generate name based on date
+    const name = `Night Out - ${format(plannedDate, 'MMM d')}`;
 
     try {
       await createPlannedNight.mutateAsync({
@@ -164,53 +164,33 @@ export default function PlanANight() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Add Venue Panel */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Plan Details Card */}
-            <Card className="card-dark border-border">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-primary" />
-                  Plan Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Plan Name (optional)</Label>
-                  <Input
-                    value={planName}
-                    onChange={(e) => setPlanName(e.target.value)}
-                    placeholder="e.g., Birthday Night Out"
-                    className="bg-secondary border-border"
+            {/* Date Picker - Compact */}
+            <div className="space-y-2">
+              <Label className="text-foreground">Select Date for Your Night</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-secondary border-border",
+                      !plannedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {plannedDate ? format(plannedDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={plannedDate}
+                    onSelect={setPlannedDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal bg-secondary border-border",
-                          !plannedDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {plannedDate ? format(plannedDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={plannedDate}
-                        onSelect={setPlannedDate}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </CardContent>
-            </Card>
+                </PopoverContent>
+              </Popover>
+            </div>
 
             {/* Add Stop Card */}
             <Card className="sticky top-24 card-dark border-border">
