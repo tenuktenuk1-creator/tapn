@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { MapPin } from 'lucide-react';
+import { MapPin, Home } from 'lucide-react';
 
 const authSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -69,19 +69,30 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
-      <Card className="w-full max-w-md border-border">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-xl gradient-primary flex items-center justify-center">
-            <MapPin className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="font-display text-2xl">
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </CardTitle>
-          <CardDescription>
-            {isSignUp ? 'Start booking amazing venues' : 'Sign in to your account'}
-          </CardDescription>
-        </CardHeader>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Home Button Header */}
+      <div className="p-4">
+        <Link to="/">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <Home className="h-4 w-4" />
+            Home
+          </Button>
+        </Link>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-border">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-xl gradient-primary flex items-center justify-center">
+              <MapPin className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <CardTitle className="font-display text-2xl">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </CardTitle>
+            <CardDescription>
+              {isSignUp ? 'Start booking amazing venues' : 'Sign in to your account'}
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
@@ -131,8 +142,9 @@ export default function AuthPage() {
               {isSignUp ? 'Sign In' : 'Sign Up'}
             </button>
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
