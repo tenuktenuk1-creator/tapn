@@ -60,26 +60,53 @@ export default function PlanANight() {
   });
 
   const addStop = () => {
-    if (!selectedVenueId || !venues) return;
+    // ✅ VALIDATION: Check venue is actually selected
+    if (!selectedVenueId || selectedVenueId.trim() === '') {
+      toast.error('Please select a venue first');
+      return;
+    }
+  
+    if (!venues) {
+      toast.error('Venues are still loading');
+      return;
+    }
     
     const venue = venues.find(v => v.id === selectedVenueId);
-    if (!venue) return;
-
+    
+    // ✅ VALIDATION: Check venue exists
+    if (!venue) {
+      toast.error('Selected venue not found. Please try again.');
+      setSelectedVenueId('');
+      return;
+    }
+  
+    // ✅ VALIDATION: Check for duplicate venues
+    const isDuplicate = plannedStops.some(stop => stop.venue.id === venue.id);
+    if (isDuplicate) {
+      toast.error('This venue is already in your plan');
+      return;
+    }
+  
     const newStop: PlannedStop = {
       id: crypto.randomUUID(),
       venue,
       startTime,
       endTime,
     };
-
+  
     setPlannedStops([...plannedStops, newStop]);
-    setSelectedVenueId('');
+    setSelectedVenueId(''); // Clear selection for next venue
     
     // Auto-advance times for next stop
     const nextStart = endTime;
     const nextEndHour = parseInt(endTime.split(':')[0]) + 2;
+    
+    // ✅ FIX: Cap at 23:00 instead of 25:00
+    const cappedEndHour = Math.min(nextEndHour, 23);
     setStartTime(nextStart);
-    setEndTime(`${Math.min(nextEndHour, 25).toString().padStart(2, '0')}:00`);
+    setEndTime(`${cappedEndHour.toString().padStart(2, '0')}:00`);
+    
+    toast.success(`Added ${venue.name} to your plan`);
   };
 
   const removeStop = (id: string) => {
@@ -103,37 +130,69 @@ export default function PlanANight() {
       navigate('/auth');
       return;
     }
-
+  
     if (!plannedDate) {
       toast.error('Please select a date for your night out');
       return;
     }
-
+  
     if (plannedStops.length === 0) {
       toast.error('Please add at least one venue to your plan');
       return;
     }
-
+  
+    // ✅ VALIDATION: Check all stops have valid venues
+    const invalidStops = plannedStops.filter(stop => {
+      const venueId = stop.venue?.id;
+      return !venueId || venueId.trim() === '';
+    });
+  
+    if (invalidStops.length > 0) {
+      toast.error('Some venues are invalid. Please remove them and add again.');
+      console.error('Invalid stops detected:', invalidStops);
+      return;
+    }
+  
+    // ✅ VALIDATION: Check all times are valid (not 24:00 or higher)
+    const invalidTimes = plannedStops.filter(stop => {
+      const startHour = parseInt(stop.startTime.split(':')[0]);
+      const endHour = parseInt(stop.endTime.split(':')[0]);
+      return startHour >= 24 || endHour >= 24 || startHour < 0 || endHour < 0;
+    });
+  
+    if (invalidTimes.length > 0) {
+      toast.error('Some time slots are invalid. Times must be between 00:00 and 23:59.');
+      console.error('Invalid times detected:', invalidTimes);
+      return;
+    }
+  
     // Auto-generate name based on date
     const name = `Night Out - ${format(plannedDate, 'MMM d')}`;
-
+  
     try {
+      // ✅ SANITIZE: Clean the data before sending
       await createPlannedNight.mutateAsync({
         name,
         planned_date: format(plannedDate, 'yyyy-MM-dd'),
         stops: plannedStops.map((stop, index) => ({
-          venue_id: stop.venue.id,
+          venue_id: stop.venue.id.trim(), // ✅ Trim whitespace
           start_time: stop.startTime,
           end_time: stop.endTime,
           order_index: index,
         })),
       });
-
+  
       toast.success('Night plan saved successfully!');
       navigate('/profile');
     } catch (error) {
       console.error('Error saving plan:', error);
-      toast.error('Failed to save plan');
+      
+      // ✅ Show user-friendly error
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to save plan. Please try again.');
+      }
     }
   };
 
@@ -203,7 +262,19 @@ export default function PlanANight() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Select Venue</Label>
-                  <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
+                                    <Select 
+                    value={selectedVenueId} 
+                    onValueChange={(value) => {
+                      // ✅ VALIDATION: Only set if value is a valid UUID
+                      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                      if (value && uuidRegex.test(value)) {
+                        setSelectedVenueId(value);
+                      } else {
+                        console.error('Invalid venue ID selected:', value);
+                        setSelectedVenueId('');
+                      }
+                    }}
+                  >
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Choose a venue..." />
                     </SelectTrigger>
@@ -225,7 +296,7 @@ export default function PlanANight() {
                         <div className="py-2 px-3 text-sm text-muted-foreground">No venues available</div>
                       )}
                     </SelectContent>
-                  </Select>
+                  </Select> 
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
