@@ -54,14 +54,14 @@ export default function PlanANight() {
   const [endTime, setEndTime] = useState('20:00');
   const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
 
-  const timeSlots = Array.from({ length: 12 }, (_, i) => {
-    const hour = i + 14;
-    return `${hour.toString().padStart(2, '0')}:00`;
-  });
+  const timeSlots = Array.from({ length: 10 }, (_, i) => {
+    const hour = i + 14; // 14..23
+    return `${hour.toString().padStart(2, "0")}:00`;
+  });  
 
   const addStop = () => {
     if (!selectedVenueId || !venues) return;
-    
+
     const venue = venues.find(v => v.id === selectedVenueId);
     if (!venue) return;
 
@@ -74,14 +74,19 @@ export default function PlanANight() {
 
     setPlannedStops([...plannedStops, newStop]);
     setSelectedVenueId('');
-    
-    // Auto-advance times for next stop
-    const nextStart = endTime;
-    const nextEndHour = parseInt(endTime.split(':')[0]) + 2;
-    setStartTime(nextStart);
-    setEndTime(`${Math.min(nextEndHour, 25).toString().padStart(2, '0')}:00`);
-  };
 
+
+    // Auto-advance times for next stop
+    const nextEndHour = parseInt(endTime.split(":")[0]) + 2;
+    setStartTime(endTime);
+
+    const clamped = Math.min(nextEndHour, 23);
+    setEndTime(`${clamped.toString().padStart(2, "0")}:00`);
+
+  };
+  const isTimeRangeValid =
+  parseInt(endTime.split(":")[0]) >
+  parseInt(startTime.split(":")[0]);
   const removeStop = (id: string) => {
     setPlannedStops(plannedStops.filter(stop => stop.id !== id));
   };
@@ -261,14 +266,20 @@ export default function PlanANight() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {!isTimeRangeValid && (
+              <p className="text-xs text-destructive">
+                Incorrect time duration
+              </p>
+            )}
                   </div>
                 </div>
 
                 <Button 
-                  className="w-full gradient-primary"
-                  onClick={addStop}
-                  disabled={!selectedVenueId}
-                >
+  className="w-full gradient-primary"
+  onClick={addStop}
+  disabled={!selectedVenueId || !isTimeRangeValid}
+>
+
                   <Plus className="mr-2 h-4 w-4" />
                   Add to Plan
                 </Button>

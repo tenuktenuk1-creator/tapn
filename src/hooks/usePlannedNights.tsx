@@ -118,12 +118,11 @@ export function useCreatePlannedNight() {
 
       if (nightError) throw nightError;
 
-      // Create the stops
       if (data.stops.length > 0) {
         const { error: stopsError } = await supabase
-          .from('planned_stops')
+          .from("planned_stops")
           .insert(
-            data.stops.map(stop => ({
+            data.stops.map((stop) => ({
               planned_night_id: night.id,
               venue_id: stop.venue_id,
               start_time: stop.start_time,
@@ -131,9 +130,14 @@ export function useCreatePlannedNight() {
               order_index: stop.order_index,
             }))
           );
-
-        if (stopsError) throw stopsError;
+      
+        if (stopsError) {
+          // rollback the night so you don't leave orphan rows
+          await supabase.from("planned_nights").delete().eq("id", night.id);
+          throw stopsError;
+        }
       }
+      
 
       return night;
     },
