@@ -41,7 +41,7 @@ export function usePlannedNights() {
           *,
           stops:planned_stops(
             *,
-            venue:public_venues(*)
+            venue:venues(*)
           )
         `)
         .eq('user_id', user.id)
@@ -73,7 +73,7 @@ export function usePlannedNight(id: string | undefined) {
           *,
           stops:planned_stops(
             *,
-            venue:public_venues(*)
+            venue:venues(*)
           )
         `)
         .eq('id', id)
