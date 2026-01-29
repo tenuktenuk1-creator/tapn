@@ -3,6 +3,33 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+/* Leaflet popup customization */
+.leaflet-popup-content-wrapper {
+  background: hsl(240 10% 8%);
+  color: hsl(0 0% 98%);
+  border-radius: 1rem;
+  border: 1px solid hsl(240 10% 15%);
+  box-shadow: 0 8px 24px -6px hsl(322 100% 60% / 0.15);
+}
+
+.leaflet-popup-tip {
+  background: hsl(240 10% 8%);
+  border: 1px solid hsl(240 10% 15%);
+}
+
+.leaflet-popup-close-button {
+  color: hsl(0 0% 70%) !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: hsl(0 0% 98%) !important;
+}
+
+.leaflet-container {
+  font-family: 'Inter', sans-serif;
+}
 
 @layer base {
   :root {

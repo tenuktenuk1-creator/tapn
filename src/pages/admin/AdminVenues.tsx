@@ -17,7 +17,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  Eye
+  Eye,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -347,7 +348,12 @@ export default function AdminVenues() {
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <MapPin className="h-4 w-4" />
-                          {venue.city}
+                          <span>{venue.city}</span>
+                          {(!venue.latitude || !venue.longitude) && (
+                            <span title="Missing coordinates - won't appear on map">
+                              <AlertTriangle className="h-4 w-4 text-yellow-500 ml-1" />
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

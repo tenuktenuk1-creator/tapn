@@ -17,10 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { VenueType, venueTypeLabels } from '@/types/venue';
+import { VenueType, venueTypeLabels, BusyStatus, busyStatusLabels } from '@/types/venue';
 import { Badge } from '@/components/ui/badge';
+import { AlertTriangle } from 'lucide-react';
 
 const venueTypes: VenueType[] = ['cafe', 'karaoke', 'pool_snooker', 'lounge'];
+const busyStatuses: BusyStatus[] = ['quiet', 'moderate', 'busy'];
 
 export default function AdminVenueForm() {
   const { id } = useParams();
@@ -35,9 +37,12 @@ export default function AdminVenueForm() {
     description: '',
     address: '',
     city: '',
+    latitude: '',
+    longitude: '',
     phone: '',
     email: '',
     price_per_hour: '',
+    busy_status: 'quiet' as BusyStatus,
     is_active: true,
     images: [] as string[],
     amenities: [] as string[],
@@ -70,9 +75,12 @@ export default function AdminVenueForm() {
       description: data.description || '',
       address: data.address,
       city: data.city,
+      latitude: data.latitude?.toString() || '',
+      longitude: data.longitude?.toString() || '',
       phone: data.phone || '',
       email: data.email || '',
       price_per_hour: data.price_per_hour?.toString() || '',
+      busy_status: data.busy_status || 'quiet',
       is_active: data.is_active ?? true,
       images: data.images || [],
       amenities: data.amenities || [],
@@ -103,9 +111,13 @@ export default function AdminVenueForm() {
       description: formData.description || null,
       address: formData.address,
       city: formData.city,
+      latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+      longitude: formData.longitude ? parseFloat(formData.longitude) : null,
       phone: formData.phone || null,
       email: formData.email || null,
       price_per_hour: formData.price_per_hour ? parseFloat(formData.price_per_hour) : null,
+      busy_status: formData.busy_status,
+      busy_status_updated_at: new Date().toISOString(),
       is_active: formData.is_active,
       images: formData.images,
       amenities: formData.amenities,
@@ -259,6 +271,45 @@ export default function AdminVenueForm() {
                   className="bg-secondary border-border"
                 />
               </div>
+
+              {/* Coordinates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="latitude">Latitude</Label>
+                  <Input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    placeholder="e.g., 47.9184"
+                    value={formData.latitude}
+                    onChange={(e) => setFormData(prev => ({ ...prev, latitude: e.target.value }))}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    placeholder="e.g., 106.9177"
+                    value={formData.longitude}
+                    onChange={(e) => setFormData(prev => ({ ...prev, longitude: e.target.value }))}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+              </div>
+
+              {/* Missing coordinates warning */}
+              {(!formData.latitude || !formData.longitude) && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                  <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-yellow-500 font-medium">Coordinates missing</p>
+                    <p className="text-muted-foreground">This venue won't appear on the map until coordinates are set.</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Contact */}
@@ -289,19 +340,50 @@ export default function AdminVenueForm() {
               </div>
             </div>
 
-            {/* Pricing */}
+            {/* Pricing & Status */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-foreground">Pricing</h3>
+              <h3 className="font-semibold text-foreground">Pricing & Status</h3>
               
-              <div className="space-y-2">
-                <Label htmlFor="price_per_hour">Price per Hour (₮)</Label>
-                <Input
-                  id="price_per_hour"
-                  type="number"
-                  value={formData.price_per_hour}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price_per_hour: e.target.value }))}
-                  className="bg-secondary border-border"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price_per_hour">Price per Hour (₮)</Label>
+                  <Input
+                    id="price_per_hour"
+                    type="number"
+                    value={formData.price_per_hour}
+                    onChange={(e) => setFormData(prev => ({ ...prev, price_per_hour: e.target.value }))}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="busy_status">Busy Status</Label>
+                  <Select
+                    value={formData.busy_status}
+                    onValueChange={(value: BusyStatus) => setFormData(prev => ({ ...prev, busy_status: value }))}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {busyStatuses.map(status => (
+                        <SelectItem key={status} value={status}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              status === 'quiet' ? 'bg-green-500' :
+                              status === 'moderate' ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`} />
+                            {busyStatusLabels[status]}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Set the current crowd level for this venue
+                  </p>
+                </div>
               </div>
             </div>
 
