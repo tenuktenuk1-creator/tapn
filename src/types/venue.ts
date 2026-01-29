@@ -2,6 +2,7 @@ export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
 export type BookingStatus = 'confirmed' | 'cancelled';
 export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
 export type PlannedNightStatus = 'upcoming' | 'completed' | 'cancelled';
+export type BusyStatus = 'quiet' | 'moderate' | 'busy';
 
 // Public venue data (excludes sensitive contact info)
 export interface PublicVenue {
@@ -22,6 +23,8 @@ export interface PublicVenue {
   is_active: boolean;
   vibe_tags: string[] | null;
   price_tier: PriceTier;
+  busy_status: BusyStatus;
+  busy_status_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -101,6 +104,18 @@ export const venueTypeColors: Record<VenueType, string> = {
   karaoke: 'bg-venue-karaoke',
   pool_snooker: 'bg-venue-pool',
   lounge: 'bg-venue-lounge',
+};
+
+export const busyStatusLabels: Record<BusyStatus, string> = {
+  quiet: 'Quiet',
+  moderate: 'Moderate',
+  busy: 'Busy',
+};
+
+export const busyStatusColors: Record<BusyStatus, { bg: string; text: string }> = {
+  quiet: { bg: 'bg-green-500', text: 'text-white' },
+  moderate: { bg: 'bg-yellow-500', text: 'text-black' },
+  busy: { bg: 'bg-red-500', text: 'text-white' },
 };
 
 export const vibeTags = [
