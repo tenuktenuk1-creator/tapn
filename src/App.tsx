@@ -11,6 +11,7 @@ import VenuesPage from "./pages/Venues";
 import VenueDetailPage from "./pages/VenueDetail";
 import BookingSuccess from "./pages/BookingSuccess";
 import PlanANight from "./pages/PlanANight";
+import HowItWorks from "./pages/HowItWorks";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVenues from "./pages/admin/AdminVenues";
 import AdminVenueForm from "./pages/admin/AdminVenueForm";
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/booking-success" element={<BookingSuccess />} />
             <Route path="/booking-success" element={<BookingSuccess />} />
             <Route path="/plan-a-night" element={<PlanANight />} />
+            <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/admin" element={
               <ProtectedRoute requireAdmin>
                 <AdminDashboard />

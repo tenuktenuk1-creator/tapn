@@ -44,12 +44,12 @@ export function Header() {
             Plan a Night
           </Link>
           <Link 
-            to="/#how-it-works" 
+            to="/how-it-works" 
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             How It Works
           </Link>
-          <Link 
+          <Link
             to="/partner"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -142,7 +142,7 @@ export function Header() {
               Plan a Night
             </Link>
             <Link 
-              to="/#how-it-works" 
+              to="/how-it-works" 
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
