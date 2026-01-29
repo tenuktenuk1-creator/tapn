@@ -33,18 +33,12 @@ const steps = [
   },
   {
     number: 2,
-    icon: Eye,
-    title: 'Compare',
-    desc: 'See photos, prices, amenities, location, and availability.',
-  },
-  {
-    number: 3,
     icon: CalendarCheck,
     title: 'Book',
     desc: 'Pick a time, confirm details, and pay with QPay or card.',
   },
   {
-    number: 4,
+    number: 3,
     icon: PartyPopper,
     title: 'Go',
     desc: 'Show your booking confirmation and enjoy your night.',
@@ -142,9 +136,9 @@ export default function HowItWorks() {
             Tap Into the Night
           </h2>
           <p className="text-center text-muted-foreground mb-16">
-            Four simple steps to your perfect night out
+            Three simple steps to your perfect night out
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {steps.map(({ number, icon: Icon, title, desc }) => (
               <div key={number} className="relative card-dark rounded-2xl p-6 text-center">
                 <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center text-sm font-semibold text-primary bg-background">
@@ -237,24 +231,47 @@ export default function HowItWorks() {
             TAPN Pillars
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {pillars.map(({ icon: Icon, title, desc, status, isLive }) => (
-              <div key={title} className="card-dark rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl gradient-icon flex items-center justify-center">
-                    <Icon className="h-6 w-6 text-primary-foreground" />
-                  </div>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                    isLive 
-                      ? 'bg-primary/20 text-primary' 
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {status}
-                  </span>
-                </div>
-                <h3 className="font-display font-semibold text-lg mb-2 text-foreground">{title}</h3>
-                <p className="text-sm text-muted-foreground">{desc}</p>
-              </div>
-            ))}
+          {pillars.map(({ icon: Icon, title, desc, status, isLive }) => (
+  <div
+    key={title}
+    className={`relative card-dark rounded-2xl p-6 ${
+      !isLive ? 'overflow-hidden' : ''
+    }`}
+  >
+    {/* Status badge – always visible */}
+    <span
+      className={`absolute top-4 right-4 z-10 text-xs font-semibold px-3 py-1 rounded-full ${
+        isLive
+          ? 'bg-primary/20 text-primary'
+          : 'bg-muted text-muted-foreground'
+      }`}
+    >
+      {status}
+    </span>
+
+    {/* Blurred content when NOT live */}
+    <div className={`${!isLive ? 'blur-sm opacity-60 pointer-events-none' : ''}`}>
+      <div className="flex items-center mb-4">
+        <div className="w-12 h-12 rounded-xl gradient-icon flex items-center justify-center">
+          <Icon className="h-6 w-6 text-primary-foreground" />
+        </div>
+      </div>
+
+      <h3 className="font-display font-semibold text-lg mb-2 text-foreground">
+        {title}
+      </h3>
+
+      <p className="text-sm text-muted-foreground">
+        {desc}
+      </p>
+    </div>
+
+    {/* Optional dark glass overlay */}
+    {!isLive && (
+      <div className="absolute inset-0 bg-background/30 backdrop-blur-[2px]" />
+    )}
+  </div>
+))}
           </div>
         </div>
       </section>
