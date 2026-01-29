@@ -46,6 +46,8 @@ const MOCK_BOOKINGS: Booking[] = [
         is_active: true,
         vibe_tags: ['chill', 'luxury'],
         price_tier: 'premium',
+        busy_status: 'moderate',
+        busy_status_updated_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }
@@ -89,6 +91,8 @@ const MOCK_BOOKINGS: Booking[] = [
         is_active: true,
         vibe_tags: [],
         price_tier: 'budget',
+        busy_status: 'quiet',
+        busy_status_updated_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }
@@ -132,6 +136,8 @@ const MOCK_BOOKINGS: Booking[] = [
         is_active: true,
         vibe_tags: [],
         price_tier: 'moderate',
+        busy_status: 'busy',
+        busy_status_updated_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }

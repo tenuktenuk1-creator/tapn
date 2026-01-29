@@ -1,17 +1,16 @@
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, MapPin, Clock } from 'lucide-react';
+import { Star, MapPin, Navigation } from 'lucide-react';
 import { PublicVenue, venueTypeLabels, priceTierLabels } from '@/types/venue';
 import { BusyBadge } from './BusyBadge';
+import { formatDistance, getDirectionsUrl } from '@/lib/geo';
 
-interface VenueCardProps {
-  venue: PublicVenue;
+interface VenueCardWithDistanceProps {
+  venue: PublicVenue & { distance?: number };
 }
 
-export function VenueCard({ venue }: VenueCardProps) {
-  const busyStatus = venue.busy_status || 'quiet';
-
+export function VenueCardWithDistance({ venue }: VenueCardWithDistanceProps) {
   const venueTypeColorMap = {
     cafe: 'bg-orange-500',
     karaoke: 'bg-pink-500',
@@ -19,9 +18,7 @@ export function VenueCard({ venue }: VenueCardProps) {
     lounge: 'bg-purple-500',
   };
 
-  // Determine if venue is "open now" based on opening hours if available
-  // For MVP, we'll derive this from busy status (quiet/moderate = open, busy = still open but busy)
-  const isOpen = true; // Simplified for MVP
+  const busyStatus = venue.busy_status || 'quiet';
 
   return (
     <div className="card-dark rounded-2xl overflow-hidden group">
@@ -80,29 +77,45 @@ export function VenueCard({ venue }: VenueCardProps) {
           )}
         </div>
 
-        {/* Location & Hours */}
+        {/* Location & Distance */}
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
             <span>{venue.city}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span className={isOpen ? 'text-green-500' : ''}>
-              {isOpen ? 'Open Now' : 'Closed'}
-            </span>
+            {venue.distance !== undefined && (
+              <span className="text-primary font-medium">
+                • {formatDistance(venue.distance)}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* View Details Button */}
-        <Link to={`/venues/${venue.id}`}>
-          <Button 
-            variant="outline" 
-            className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10"
-          >
-            View Details
-          </Button>
-        </Link>
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Link to={`/venues/${venue.id}`} className="flex-1">
+            <Button 
+              variant="outline" 
+              className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10"
+            >
+              View Details
+            </Button>
+          </Link>
+          {venue.latitude && venue.longitude && (
+            <a 
+              href={getDirectionsUrl(venue.latitude, venue.longitude, venue.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="rounded-xl"
+              >
+                <Navigation className="h-4 w-4" />
+              </Button>
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
