@@ -41,7 +41,7 @@ export function usePlannedNights() {
           *,
           stops:planned_stops(
             *,
-            venue:public_venues(*)
+            venue:venues(*)
           )
         `)
         .eq('user_id', user.id)
@@ -73,7 +73,7 @@ export function usePlannedNight(id: string | undefined) {
           *,
           stops:planned_stops(
             *,
-            venue:public_venues(*)
+            venue:venues(*)
           )
         `)
         .eq('id', id)
@@ -149,7 +149,6 @@ export function useCreatePlannedNight() {
 
       console.log('Planned night created:', night.id);
 
-      // Create the stops
       if (data.stops.length > 0) {
         console.log('Creating stops:', data.stops);
         
@@ -181,6 +180,7 @@ export function useCreatePlannedNight() {
         
         console.log('Stops created successfully');
       }
+      
 
       return night;
     },

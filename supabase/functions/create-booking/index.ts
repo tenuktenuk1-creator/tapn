@@ -5,7 +5,10 @@ declare const Deno: any;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-forwarded-for",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-forwarded-for",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -56,7 +59,7 @@ function sanitizeString(input: string): string {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
