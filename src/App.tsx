@@ -33,111 +33,73 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route
-              path="/auth"
-              element={
-                <PublicOnlyRoute>
-                  <AuthPage />
-                </PublicOnlyRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/auth" element={
+              <PublicOnlyRoute>
+                <AuthPage />
+              </PublicOnlyRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
             <Route path="/venues" element={<VenuesPage />} />
             <Route path="/venues/:id" element={<VenueDetailPage />} />
             <Route path="/booking-success" element={<BookingSuccess />} />
             <Route path="/booking-success" element={<BookingSuccess />} />
             <Route path="/plan-a-night" element={<PlanANight />} />
-
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/venues"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminVenues />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/venues/new"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/venues/:id/edit"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/bookings"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminBookings />
-                </ProtectedRoute>
-              }
-            />
-
+            <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/admin" element={
+              <ProtectedRoute requireAdmin>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/venues" element={
+              <ProtectedRoute requireAdmin>
+                <AdminVenues />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/venues/new" element={
+              <ProtectedRoute requireAdmin>
+                <AdminVenueForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/venues/:id/edit" element={
+              <ProtectedRoute requireAdmin>
+                <AdminVenueForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/bookings" element={
+              <ProtectedRoute requireAdmin>
+                <AdminBookings />
+              </ProtectedRoute>
+            } />
             <Route path="/partner" element={<PartnerLanding />} />
-            <Route
-              path="/partner/dashboard"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/venues"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerVenues />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/venues/new"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/venues/:id/edit"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/bookings"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerBookings />
-                </ProtectedRoute>
-              }
-            />
-
+            <Route path="/partner/dashboard" element={
+              <ProtectedRoute>
+                <PartnerDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/partner/venues" element={
+              <ProtectedRoute>
+                <PartnerVenues />
+              </ProtectedRoute>
+            } />
+            <Route path="/partner/venues/new" element={
+              <ProtectedRoute>
+                <PartnerVenueForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/partner/venues/:id/edit" element={
+              <ProtectedRoute>
+                <PartnerVenueForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/partner/bookings" element={
+              <ProtectedRoute>
+                <PartnerBookings />
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -5,11 +5,10 @@ import { useAuth } from '@/hooks/useAuth';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  requirePartner?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false, requirePartner = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isPartner } = useAuth();
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -21,6 +20,7 @@ export function ProtectedRoute({ children, requireAdmin = false, requirePartner 
   }
 
   if (!user) {
+    // Redirect to auth page, preserving the intended destination
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -28,18 +28,11 @@ export function ProtectedRoute({ children, requireAdmin = false, requirePartner 
     return <Navigate to="/" replace />;
   }
 
-  if (requirePartner && !isPartner) {
-    return <Navigate to="/partner" replace />;
-  }
-
   return <>{children}</>;
 }
 
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, role } = useAuth();
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const redirect = params.get('redirect');
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -50,16 +43,8 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
-    if (redirect) return <Navigate to={redirect} replace />;
-
-    const defaultPath =
-      role === 'admin'
-        ? '/admin'
-        : role === 'partner'
-          ? '/partner/dashboard'
-          : '/profile';
-
-    return <Navigate to={defaultPath} replace />;
+    // Redirect logged-in users to profile
+    return <Navigate to="/profile" replace />;
   }
 
   return <>{children}</>;
