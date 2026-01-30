@@ -98,7 +98,8 @@ serve(async (req) => {
       notes,
       guest_name,
       guest_phone,
-      guest_email 
+      guest_email,
+      user_id  // ✅ ADD THIS 
     } = body;
     
     logStep("Booking request received", { venue_id, booking_date, start_time, end_time, total_price, guest_email, clientIp });
@@ -197,6 +198,7 @@ serve(async (req) => {
       .from("bookings")
       .insert({
         venue_id,
+        user_id: user_id || null, 
         booking_date,
         start_time,
         end_time,

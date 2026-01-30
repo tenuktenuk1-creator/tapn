@@ -104,6 +104,32 @@ export function useCreatePlannedNight() {
     }) => {
       if (!user) throw new Error('User not authenticated');
 
+      // ✅ VALIDATION: Check all venue_ids are valid UUIDs
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      const invalidStops = data.stops.filter(stop => {
+        const venueId = stop.venue_id?.trim();
+        return !venueId || venueId === '' || !uuidRegex.test(venueId);
+      });
+
+      if (invalidStops.length > 0) {
+        console.error('Invalid venue IDs found:', invalidStops);
+        throw new Error('One or more venues have invalid IDs. Please remove and re-add them.');
+      }
+
+      // ✅ VALIDATION: Check all times are valid
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      const invalidTimes = data.stops.filter(stop => {
+        return !timeRegex.test(stop.start_time) || !timeRegex.test(stop.end_time);
+      });
+
+      if (invalidTimes.length > 0) {
+        console.error('Invalid times found:', invalidTimes);
+        throw new Error('One or more time slots are invalid.');
+      }
+
+      console.log('Creating planned night:', data);
+
       // Create the planned night
       const { data: night, error: nightError } = await supabase
         .from('planned_nights')
@@ -116,26 +142,43 @@ export function useCreatePlannedNight() {
         .select()
         .single();
 
-      if (nightError) throw nightError;
+      if (nightError) {
+        console.error('Failed to create planned night:', nightError);
+        throw new Error(`Failed to create plan: ${nightError.message}`);
+      }
+
+      console.log('Planned night created:', night.id);
 
       if (data.stops.length > 0) {
+        console.log('Creating stops:', data.stops);
+        
+        // ✅ SANITIZE: Ensure no empty strings or invalid data
+        const sanitizedStops = data.stops.map(stop => ({
+          planned_night_id: night.id,
+          venue_id: stop.venue_id.trim(), // Remove whitespace
+          start_time: stop.start_time,
+          end_time: stop.end_time,
+          order_index: stop.order_index,
+          notes: null, // ✅ Add notes field (currently no UI for it)
+        }));
+
         const { error: stopsError } = await supabase
-          .from("planned_stops")
-          .insert(
-            data.stops.map((stop) => ({
-              planned_night_id: night.id,
-              venue_id: stop.venue_id,
-              start_time: stop.start_time,
-              end_time: stop.end_time,
-              order_index: stop.order_index,
-            }))
-          );
-      
+          .from('planned_stops')
+          .insert(sanitizedStops);
+
         if (stopsError) {
-          // rollback the night so you don't leave orphan rows
-          await supabase.from("planned_nights").delete().eq("id", night.id);
-          throw stopsError;
+          console.error('Failed to create stops:', stopsError);
+          
+          // Clean up the created night if stops fail
+          await supabase
+            .from('planned_nights')
+            .delete()
+            .eq('id', night.id);
+          
+          throw new Error(`Failed to add venues to plan: ${stopsError.message}`);
         }
+        
+        console.log('Stops created successfully');
       }
       
 

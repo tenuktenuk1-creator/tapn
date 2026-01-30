@@ -7,8 +7,11 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  isPartner: boolean;
+  role: 'user' | 'partner' | 'admin' | null;
+  refreshRole: (userId?: string) => Promise<'user' | 'partner' | 'admin'>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ data: { user: { id: string } | null; } | null;error: Error | null;}>;
   signOut: () => Promise<void>;
 }
 
@@ -19,6 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
+  const [role, setRole] = useState<'user' | 'partner' | 'admin' | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -29,10 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           setTimeout(() => {
-            checkAdminRole(session.user.id);
+            refreshRole(session.user.id);
           }, 0);
         } else {
           setIsAdmin(false);
+          setIsPartner(false);
+          setRole(null);
         }
       }
     );
@@ -43,27 +50,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
 
       if (session?.user) {
-        checkAdminRole(session.user.id);
+        refreshRole(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkAdminRole = async (userId: string) => {
-    const { data } = await supabase
+  const refreshRole = async (userId?: string): Promise<'user' | 'partner' | 'admin'> => {
+    const id = userId ?? (await supabase.auth.getUser()).data.user?.id;
+    if (!id) {
+      setIsAdmin(false);
+      setIsPartner(false);
+      setRole(null);
+      return 'user';
+    }
+
+    const { data, error } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
+      .eq('user_id', id)
       .maybeSingle();
-    
-    setIsAdmin(!!data);
+
+    if (error) {
+      setIsAdmin(false);
+      setIsPartner(false);
+      setRole('user');
+      return 'user';
+    }
+
+    const nextRole = (data?.role as 'user' | 'partner' | 'admin' | undefined) ?? 'user';
+    setRole(nextRole);
+    setIsAdmin(nextRole === 'admin');
+    setIsPartner(nextRole === 'partner');
+    return nextRole;
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -74,26 +99,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
-    
+
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    return { error };
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  return { data, error };
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setIsPartner(false);
+    setRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, isPartner, role, refreshRole, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
