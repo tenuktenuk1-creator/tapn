@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { calculateDistance } from '@/lib/geo';
 import { Layout } from '@/components/layout/Layout';
 import { VenueCardWithDistance } from '@/components/venues/VenueCardWithDistance';
 import { VenueMap } from '@/components/venues/VenueMap';
@@ -44,23 +45,34 @@ export default function VenuesPage() {
     setSearchParams(params, { replace: true });
   }, [viewMode, searchParams, setSearchParams]);
 
-  // Process venues with distance and filtering
+  const hasUserLoc = latitude != null && longitude != null;
+
   const processedVenues = useMemo(() => {
     if (!venues) return [];
-
-    // Filter by busy status
+  
     let filtered = venues as PublicVenue[];
     if (busyStatus !== 'all') {
       filtered = filtered.filter(v => v.busy_status === busyStatus);
     }
-
-    // Sort by distance if we have user location
-    if (latitude && longitude) {
-      return sortByDistance(filtered, latitude, longitude);
-    }
-
-    return filtered.map(v => ({ ...v, distance: undefined }));
-  }, [venues, busyStatus, latitude, longitude]);
+  
+    const withDistance = filtered.map(v => {
+      const canCalc = hasUserLoc && v.latitude != null && v.longitude != null;
+      return {
+        ...v,
+        distance: canCalc
+          ? calculateDistance(latitude!, longitude!, v.latitude!, v.longitude!)
+          : undefined,
+      };
+    });
+  
+    // sort: venues with distance first, then the rest
+    return withDistance.sort((a, b) => {
+      if (a.distance == null && b.distance == null) return 0;
+      if (a.distance == null) return 1;
+      if (b.distance == null) return -1;
+      return a.distance - b.distance;
+    });
+  }, [venues, busyStatus, latitude, longitude, hasUserLoc]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);

@@ -49,7 +49,7 @@ const createMarkerIcon = (status: BusyStatus) => {
 };
 
 export function VenueMapMarker({ venue, userLocation }: VenueMapMarkerProps) {
-  if (!venue.latitude || !venue.longitude) return null;
+  if (venue.latitude == null || venue.longitude == null) return null;
 
   const busyStatus = venue.busy_status || 'quiet';
   const icon = createMarkerIcon(busyStatus);

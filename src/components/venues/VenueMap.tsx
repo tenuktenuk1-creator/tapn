@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import { PublicVenue } from '@/types/venue';
 import { VenueMapMarker } from './VenueMapMarker';
 import { UserLocationMarker } from './UserLocationMarker';
@@ -14,16 +13,11 @@ interface VenueMapProps {
   className?: string;
 }
 
-// Component to handle map centering
 function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
-  const initialized = useRef(false);
 
   useEffect(() => {
-    if (!initialized.current) {
-      map.setView(center, zoom);
-      initialized.current = true;
-    }
+    map.flyTo(center, zoom, { animate: true, duration: 0.6 });
   }, [map, center, zoom]);
 
   return null;
