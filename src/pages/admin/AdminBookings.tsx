@@ -355,7 +355,7 @@ export default function AdminBookings() {
                     <TableRow 
                       key={booking.id} 
                       className="border-border cursor-pointer hover:bg-secondary/50"
-                      onClick={() => setSelectedBooking(booking)}
+                      onClick={() => { setSelectedBooking(booking); setAdminNote(booking.notes || ''); }}
                     >
                       <TableCell>
                         <div className="text-sm">
@@ -423,7 +423,7 @@ export default function AdminBookings() {
                             variant="ghost" 
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => setSelectedBooking(booking)}
+                            onClick={() => { setSelectedBooking(booking); setAdminNote(booking.notes || ''); }}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -582,6 +582,26 @@ export default function AdminBookings() {
                     <p className="text-xs text-muted-foreground">
                       Notes are for internal use only and won't be visible to the customer.
                     </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        if (!selectedBooking) return;
+                        const { error } = await supabase
+                          .from('bookings')
+                          .update({ notes: adminNote })
+                          .eq('id', selectedBooking.id);
+                        if (error) {
+                          toast.error('Failed to save note');
+                        } else {
+                          toast.success('Note saved');
+                          fetchBookings();
+                        }
+                      }}
+                    >
+                      Save Note
+                    </Button>
                   </div>
 
                   {/* Actions */}

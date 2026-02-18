@@ -78,7 +78,7 @@ export function BookingCard({ booking, showActions, onCancel }: BookingCardProps
           <div className="flex flex-col items-end gap-2">
             <div className="text-right">
               <div className="text-lg font-semibold">
-                ${(booking.total_price ? booking.total_price / 100 : 0).toLocaleString()}
+                ₮{(booking.total_price || 0).toLocaleString()}
               </div>
               <div className="text-xs text-muted-foreground">
                 {booking.payment_status}

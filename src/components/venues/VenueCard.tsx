@@ -8,17 +8,15 @@ interface VenueCardProps {
   venue: PublicVenue;
 }
 
-type VenueStatus = 'open' | 'busy' | 'booked';
+type VenueStatus = 'quiet' | 'moderate' | 'busy';
 
 export function VenueCard({ venue }: VenueCardProps) {
-  // Simulate status (in real app this would come from backend)
-  const statuses: VenueStatus[] = ['open', 'busy', 'booked'];
-  const status: VenueStatus = statuses[Math.floor(Math.random() * 3)] as VenueStatus;
+  const status: VenueStatus = (venue.busy_status as VenueStatus) || 'quiet';
 
   const statusConfig = {
-    open: { label: 'OPEN', className: 'bg-green-500 text-white' },
-    busy: { label: 'BUSY', className: 'bg-yellow-500 text-black' },
-    booked: { label: 'BOOKED', className: 'bg-red-500 text-white' },
+    quiet: { label: 'OPEN', className: 'bg-green-500 text-white' },
+    moderate: { label: 'BUSY', className: 'bg-yellow-500 text-black' },
+    busy: { label: 'FULL', className: 'bg-red-500 text-white' },
   };
 
   const venueTypeColorMap = {
@@ -96,8 +94,8 @@ export function VenueCard({ venue }: VenueCardProps) {
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span className={status === 'open' ? 'text-green-500' : status === 'booked' ? 'text-red-500' : ''}>
-              {status === 'open' ? 'Open Now' : status === 'booked' ? 'Fully Booked' : 'Busy'}
+            <span className={status === 'quiet' ? 'text-green-500' : status === 'busy' ? 'text-red-500' : 'text-yellow-500'}>
+              {status === 'quiet' ? 'Open Now' : status === 'busy' ? 'Very Busy' : 'Moderate'}
             </span>
           </div>
         </div>

@@ -52,7 +52,6 @@ const App = () => (
             <Route path="/venues" element={<VenuesPage />} />
             <Route path="/venues/:id" element={<VenueDetailPage />} />
             <Route path="/booking-success" element={<BookingSuccess />} />
-            <Route path="/booking-success" element={<BookingSuccess />} />
             <Route path="/plan-a-night" element={<PlanANight />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
 

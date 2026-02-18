@@ -103,8 +103,9 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const { data: venues, isLoading } = useVenues();
 
-  // Get top 3 rated venues
-  const trendingVenues = venues?.slice(0, 3) || [];
+  const trendingVenues = venues
+    ? [...venues].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3)
+    : [];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

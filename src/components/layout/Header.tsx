@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function Header() {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, isPartner, signOut } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -62,11 +62,19 @@ export function Header() {
           {user ? (
             <>
               {isAdmin && (
-                <Link 
-                  to="/admin" 
+                <Link
+                  to="/admin"
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Admin
+                </Link>
+              )}
+              {isPartner && !isAdmin && (
+                <Link
+                  to="/partner/dashboard"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Partner
                 </Link>
               )}
 
@@ -85,6 +93,12 @@ export function Header() {
                     <DropdownMenuItem onClick={() => navigate('/admin')}>
                       <Settings className="mr-2 h-4 w-4" />
                       Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  {isPartner && !isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/partner/dashboard')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Partner Dashboard
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
@@ -167,12 +181,21 @@ export function Header() {
                 </Link>
                 
                 {isAdmin && (
-                  <Link 
-                    to="/admin" 
+                  <Link
+                    to="/admin"
                     className="py-2 text-sm font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Admin Dashboard
+                  </Link>
+                )}
+                {isPartner && !isAdmin && (
+                  <Link
+                    to="/partner/dashboard"
+                    className="py-2 text-sm font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Partner Dashboard
                   </Link>
                 )}
                 

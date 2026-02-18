@@ -1,9 +1,23 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ArrowRight, Calendar, Mail } from 'lucide-react';
+import { CheckCircle, ArrowRight, Calendar, Mail, MapPin, Clock, Users } from 'lucide-react';
+
+interface BookingState {
+  venueName?: string;
+  venueAddress?: string;
+  bookingDate?: string;
+  startTime?: string;
+  endTime?: string;
+  guestCount?: string;
+  totalPrice?: number;
+  bookingId?: string;
+}
 
 export default function BookingSuccess() {
+  const location = useLocation();
+  const state = location.state as BookingState | null;
+
   return (
     <Layout>
       <div className="container py-20">
@@ -21,6 +35,46 @@ export default function BookingSuccess() {
           <p className="text-muted-foreground text-lg mb-8">
             Your booking has been instantly confirmed. You're all set for an amazing night!
           </p>
+
+          {/* Booking Details */}
+          {state?.venueName && (
+            <div className="card-dark rounded-xl p-6 mb-6 text-left space-y-3">
+              <h3 className="font-display font-semibold text-lg mb-4">Booking Details</h3>
+              <div className="flex items-center gap-3 text-sm">
+                <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                <div>
+                  <p className="font-medium">{state.venueName}</p>
+                  {state.venueAddress && (
+                    <p className="text-muted-foreground">{state.venueAddress}</p>
+                  )}
+                </div>
+              </div>
+              {state.bookingDate && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span>{state.bookingDate}</span>
+                </div>
+              )}
+              {state.startTime && state.endTime && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Clock className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span>{state.startTime} – {state.endTime}</span>
+                </div>
+              )}
+              {state.guestCount && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Users className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span>{state.guestCount} guests</span>
+                </div>
+              )}
+              {state.totalPrice !== undefined && (
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <span className="font-medium">Total Paid</span>
+                  <span className="font-bold text-primary">₮{state.totalPrice.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Info Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
@@ -70,9 +124,9 @@ export default function BookingSuccess() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/venues">
+            <Link to="/profile">
               <Button variant="outline" className="w-full sm:w-auto">
-                Browse More Venues
+                My Bookings
               </Button>
             </Link>
             <Link to="/">

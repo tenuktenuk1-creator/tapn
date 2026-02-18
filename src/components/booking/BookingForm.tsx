@@ -114,7 +114,18 @@ export function BookingForm({ venue }: BookingFormProps) {
       }
 
       toast.success('Booking created successfully!');
-      navigate('/booking-success');
+      navigate('/booking-success', {
+        state: {
+          venueName: venue.name,
+          venueAddress: venue.address,
+          bookingDate: format(date, 'PPP'),
+          startTime,
+          endTime,
+          guestCount,
+          totalPrice: total,
+          bookingId: data?.booking?.id,
+        },
+      });
     } catch (err) {
       console.error('Error:', err);
       toast.error('Failed to create booking');
@@ -192,11 +203,11 @@ export function BookingForm({ venue }: BookingFormProps) {
           <div className="border-t border-border pt-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Price per hour</span>
-              <span>${venue.price_per_hour?.toLocaleString() || 0}</span>
+              <span>₮{venue.price_per_hour?.toLocaleString() || 0}</span>
             </div>
             <div className="flex justify-between font-semibold text-lg">
               <span>Total</span>
-              <span className="text-primary">${calculateTotal().toLocaleString()}</span>
+              <span className="text-primary">₮{calculateTotal().toLocaleString()}</span>
             </div>
           </div>
 

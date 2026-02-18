@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVenues } from '@/hooks/useVenues';
 import { useAdminBookings } from '@/hooks/useBookings';
-import { 
-  Building2, 
-  Calendar, 
+import {
+  Building2,
+  Calendar,
   TrendingUp,
   ArrowRight,
-  Clock
+  Clock,
+  DollarSign
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,33 +46,40 @@ export default function AdminDashboard() {
     ?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
 
   const stats = [
-    { 
-      title: 'Total Venues', 
-      value: totalVenues, 
-      icon: Building2, 
+    {
+      title: 'Total Venues',
+      value: totalVenues,
+      icon: Building2,
       color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10'
+      bgColor: 'bg-blue-500/10',
     },
-    { 
-      title: 'Active Venues', 
-      value: activeVenues, 
-      icon: TrendingUp, 
+    {
+      title: 'Active Venues',
+      value: activeVenues,
+      icon: TrendingUp,
       color: 'text-green-500',
-      bgColor: 'bg-green-500/10'
+      bgColor: 'bg-green-500/10',
     },
-    { 
-      title: 'Total Bookings', 
-      value: totalBookings, 
-      icon: Calendar, 
+    {
+      title: 'Total Bookings',
+      value: totalBookings,
+      icon: Calendar,
       color: 'text-primary',
-      bgColor: 'bg-primary/10'
+      bgColor: 'bg-primary/10',
     },
-    { 
-      title: 'Confirmed', 
-      value: confirmedBookings, 
-      icon: Clock, 
+    {
+      title: 'Confirmed',
+      value: confirmedBookings,
+      icon: Clock,
       color: 'text-green-500',
-      bgColor: 'bg-green-500/10'
+      bgColor: 'bg-green-500/10',
+    },
+    {
+      title: 'Revenue',
+      value: `₮${totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
+      color: 'text-yellow-500',
+      bgColor: 'bg-yellow-500/10',
     },
   ];
 
@@ -87,7 +95,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           {stats.map(({ title, value, icon: Icon, color, bgColor }) => (
             <Card key={title} className="card-dark border-border">
               <CardContent className="p-6">

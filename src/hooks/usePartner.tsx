@@ -191,7 +191,8 @@ export function useUpdatePartnerVenue() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
       queryClient.invalidateQueries({ queryKey: ['venues'] });
-      queryClient.invalidateQueries({ queryKey: ['venue', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['public-venues'] });
+      queryClient.invalidateQueries({ queryKey: ['public-venue', data.id] });
     },
   });
 }
