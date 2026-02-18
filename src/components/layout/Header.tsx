@@ -16,6 +16,9 @@ export function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Admin эсвэл Partner бол "Partner With Us" харуулахгүй
+  const showPartnerLink = !isAdmin && !isPartner;
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
@@ -31,30 +34,32 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link 
-            to="/venues" 
+          <Link
+            to="/venues"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Venues
           </Link>
-          <Link 
-            to="/plan-a-night" 
+          <Link
+            to="/plan-a-night"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Plan a Night
           </Link>
-          <Link 
-            to="/how-it-works" 
+          <Link
+            to="/how-it-works"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             How It Works
           </Link>
-          <Link
-            to="/partner"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Partner With Us
-          </Link>
+          {showPartnerLink && (
+            <Link
+              to="/partner"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Partner With Us
+            </Link>
+          )}
         </nav>
 
         {/* Desktop Auth */}
@@ -111,14 +116,14 @@ export function Header() {
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => navigate('/auth')}
                 className="text-muted-foreground hover:text-foreground"
               >
                 Sign In
               </Button>
-              <Button 
+              <Button
                 onClick={() => navigate('/auth?mode=signup')}
                 className="gradient-primary rounded-full px-6"
               >
@@ -141,45 +146,47 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background">
           <nav className="container py-4 flex flex-col gap-3">
-            <Link 
-              to="/venues" 
+            <Link
+              to="/venues"
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
               Venues
             </Link>
-            <Link 
-              to="/plan-a-night" 
+            <Link
+              to="/plan-a-night"
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
               Plan a Night
             </Link>
-            <Link 
-              to="/how-it-works" 
+            <Link
+              to="/how-it-works"
               className="py-2 text-sm font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
               How It Works
             </Link>
-            <Link 
-              to="/partner" 
-              className="py-2 text-sm font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Partner With Us
-            </Link>
-            
+            {showPartnerLink && (
+              <Link
+                to="/partner"
+                className="py-2 text-sm font-medium"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Partner With Us
+              </Link>
+            )}
+
             {user ? (
               <>
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className="py-2 text-sm font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   My Profile
                 </Link>
-                
+
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -198,10 +205,10 @@ export function Header() {
                     Partner Dashboard
                   </Link>
                 )}
-                
-                <Button 
-                  variant="ghost" 
-                  className="justify-start px-0 text-destructive hover:text-destructive" 
+
+                <Button
+                  variant="ghost"
+                  className="justify-start px-0 text-destructive hover:text-destructive"
                   onClick={() => {
                     handleSignOut();
                     setMobileMenuOpen(false);
@@ -213,7 +220,7 @@ export function Header() {
               </>
             ) : (
               <div className="flex flex-col gap-2 pt-2">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => {
                     navigate('/auth');
@@ -223,7 +230,7 @@ export function Header() {
                 >
                   Sign In
                 </Button>
-                <Button 
+                <Button
                   onClick={() => {
                     navigate('/auth?mode=signup');
                     setMobileMenuOpen(false);
