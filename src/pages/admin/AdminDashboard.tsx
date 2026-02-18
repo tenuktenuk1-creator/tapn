@@ -17,7 +17,8 @@ import { Navigate } from 'react-router-dom';
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading } = useAuth();
-  const { data: venues } = useVenues({});
+  // Admin бүх venue харах ёстой — active болон inactive
+  const { data: venues } = useVenues({ onlyActive: false });
   const { data: bookings } = useAdminBookings();
   
 

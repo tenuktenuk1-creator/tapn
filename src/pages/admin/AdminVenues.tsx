@@ -55,7 +55,8 @@ const ITEMS_PER_PAGE = 10;
 
 export default function AdminVenues() {
   const { user, isAdmin, loading } = useAuth();
-  const { data: venues, isLoading, error } = useVenues({});
+  // Admin бүх venue харах ёстой — active болон inactive хоёуланг
+  const { data: venues, isLoading, error } = useVenues({ onlyActive: false });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -144,7 +145,8 @@ export default function AdminVenues() {
       toast.error('Failed to update venue status');
     } else {
       toast.success(`Venue ${!currentStatus ? 'activated' : 'deactivated'}`);
-      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['public-venues'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-venues'] });
     }
     setTogglingId(null);
   };
@@ -161,7 +163,8 @@ export default function AdminVenues() {
       toast.error('Failed to delete venue');
     } else {
       toast.success('Venue deleted successfully');
-      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['public-venues'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-venues'] });
     }
     setDeleteId(null);
   };
