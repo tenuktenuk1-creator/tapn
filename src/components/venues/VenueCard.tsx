@@ -8,16 +8,52 @@ interface VenueCardProps {
   venue: PublicVenue;
 }
 
-type VenueStatus = 'quiet' | 'moderate' | 'busy';
+// Check if venue is currently open based on opening_hours
+function getOpenStatus(venue: PublicVenue): { label: string; timeLabel: string; isOpen: boolean } {
+  if (!venue.opening_hours || Object.keys(venue.opening_hours).length === 0) {
+    return { label: 'OPEN', timeLabel: 'Open Now', isOpen: true };
+  }
+
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const now = new Date();
+  const dayName = days[now.getDay()];
+  const todayHours = venue.opening_hours[dayName];
+
+  if (!todayHours) {
+    return { label: 'CLOSED', timeLabel: 'Closed Today', isOpen: false };
+  }
+
+  const [openH, openM] = todayHours.open.split(':').map(Number);
+  const [closeH, closeM] = todayHours.close.split(':').map(Number);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const openMinutes = openH * 60 + openM;
+  const closeMinutes = closeH * 60 + closeM;
+
+  if (currentMinutes >= openMinutes && currentMinutes < closeMinutes) {
+    const busy = (venue as any).busy_status as string || 'quiet';
+    if (busy === 'busy') return { label: 'FULL', timeLabel: 'Very Busy', isOpen: true };
+    if (busy === 'moderate') return { label: 'BUSY', timeLabel: 'Moderate', isOpen: true };
+    return { label: 'OPEN', timeLabel: `Closes ${todayHours.close}`, isOpen: true };
+  }
+
+  if (currentMinutes < openMinutes) {
+    return { label: 'CLOSED', timeLabel: `Opens ${todayHours.open}`, isOpen: false };
+  }
+  return { label: 'CLOSED', timeLabel: 'Closed today', isOpen: false };
+}
 
 export function VenueCard({ venue }: VenueCardProps) {
-  const status: VenueStatus = (venue.busy_status as VenueStatus) || 'quiet';
+  const { label, timeLabel, isOpen } = getOpenStatus(venue);
 
-  const statusConfig = {
-    quiet: { label: 'OPEN', className: 'bg-green-500 text-white' },
-    moderate: { label: 'BUSY', className: 'bg-yellow-500 text-black' },
-    busy: { label: 'FULL', className: 'bg-red-500 text-white' },
-  };
+  const statusClassName = label === 'OPEN' ? 'bg-green-500 text-white'
+    : label === 'BUSY' ? 'bg-yellow-500 text-black'
+    : label === 'FULL' ? 'bg-red-500 text-white'
+    : 'bg-gray-600 text-white';
+
+  const timeClassName = label === 'OPEN' ? 'text-green-500'
+    : label === 'BUSY' ? 'text-yellow-500'
+    : label === 'FULL' ? 'text-red-500'
+    : 'text-muted-foreground';
 
   const venueTypeColorMap = {
     cafe: 'bg-orange-500',
@@ -43,29 +79,29 @@ export function VenueCard({ venue }: VenueCardProps) {
             </span>
           </div>
         )}
-        
+
         {/* Status Badge */}
-        <Badge 
-          className={`absolute top-3 right-3 ${statusConfig[status].className} border-0 rounded-full text-xs font-medium`}
+        <Badge
+          className={`absolute top-3 right-3 ${statusClassName} border-0 rounded-full text-xs font-medium`}
         >
-          <span className="w-2 h-2 rounded-full bg-current mr-1.5 animate-pulse" />
-          {statusConfig[status].label}
+          <span className={`w-2 h-2 rounded-full bg-current mr-1.5 ${isOpen ? 'animate-pulse' : ''}`} />
+          {label}
         </Badge>
 
         {/* Category Badge */}
-        <Badge 
+        <Badge
           className={`absolute bottom-3 left-3 ${venueTypeColorMap[venue.venue_type]} text-white border-0 rounded-lg text-xs`}
         >
           {venueTypeLabels[venue.venue_type]}
         </Badge>
       </div>
-      
+
       {/* Content */}
       <div className="p-5">
         <h3 className="font-display font-semibold text-lg text-foreground mb-2">
           {venue.name}
         </h3>
-        
+
         {/* Rating & Price Tier */}
         <div className="flex items-center justify-between mb-4">
           {venue.rating && venue.rating > 0 ? (
@@ -92,18 +128,16 @@ export function VenueCard({ venue }: VenueCardProps) {
             <MapPin className="h-4 w-4" />
             <span>{venue.city}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span className={status === 'quiet' ? 'text-green-500' : status === 'busy' ? 'text-red-500' : 'text-yellow-500'}>
-              {status === 'quiet' ? 'Open Now' : status === 'busy' ? 'Very Busy' : 'Moderate'}
-            </span>
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className={timeClassName}>{timeLabel}</span>
           </div>
         </div>
 
         {/* View Details Button */}
         <Link to={`/venues/${venue.id}`}>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10"
           >
             View Details
