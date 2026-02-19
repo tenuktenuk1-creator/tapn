@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { useNavigate, useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,8 +27,10 @@ export default function AdminVenueForm() {
   const navigate = useNavigate();
   const { user, isAdmin, loading: authLoading } = useAuth();
   const isEditing = !!id;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     venue_type: 'cafe' as VenueType,
@@ -42,7 +44,6 @@ export default function AdminVenueForm() {
     images: [] as string[],
     amenities: [] as string[],
   });
-  const [newImage, setNewImage] = useState('');
   const [newAmenity, setNewAmenity] = useState('');
 
   useEffect(() => {
@@ -137,20 +138,78 @@ export default function AdminVenueForm() {
     }
   };
 
-  const addImage = () => {
-    if (newImage.trim()) {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const uploadedUrls: string[] = [];
+
+    for (const file of Array.from(files)) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not an image file`);
+        continue;
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 5MB limit`);
+        continue;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `venues/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('venue-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
+        continue;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('venue-images')
+        .getPublicUrl(filePath);
+
+      uploadedUrls.push(urlData.publicUrl);
+    }
+
+    if (uploadedUrls.length > 0) {
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, newImage.trim()]
+        images: [...prev.images, ...uploadedUrls],
       }));
-      setNewImage('');
+      toast.success(`${uploadedUrls.length} image${uploadedUrls.length > 1 ? 's' : ''} uploaded successfully`);
+    }
+
+    setUploading(false);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = async (index: number) => {
+    const imageUrl = formData.images[index];
+
+    // Try to delete from storage if it's a Supabase storage URL
+    const supabaseStorageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/venue-images/`;
+    if (imageUrl.startsWith(supabaseStorageUrl)) {
+      const filePath = imageUrl.replace(supabaseStorageUrl, '');
+      await supabase.storage.from('venue-images').remove([filePath]);
+    }
+
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images: prev.images.filter((_, i) => i !== index),
     }));
   };
 
@@ -191,7 +250,7 @@ export default function AdminVenueForm() {
             {/* Basic Info */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Basic Information</h3>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="name">Venue Name *</Label>
                 <Input
@@ -237,7 +296,7 @@ export default function AdminVenueForm() {
             {/* Location */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Location</h3>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="address">Address *</Label>
                 <Input
@@ -264,7 +323,7 @@ export default function AdminVenueForm() {
             {/* Contact */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Contact</h3>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone</Label>
@@ -292,7 +351,7 @@ export default function AdminVenueForm() {
             {/* Pricing */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Pricing</h3>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="price_per_hour">Price per Hour (₮)</Label>
                 <Input
@@ -308,45 +367,71 @@ export default function AdminVenueForm() {
             {/* Images */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Images</h3>
-              
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter image URL"
-                  value={newImage}
-                  onChange={(e) => setNewImage(e.target.value)}
-                  className="bg-secondary border-border"
-                />
-                <Button type="button" onClick={addImage} variant="outline" className="border-border">
-                  <Plus className="h-4 w-4" />
-                </Button>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+
+              {/* Image grid with upload button */}
+              <div className="grid grid-cols-3 gap-3">
+                {formData.images.map((img, index) => (
+                  <div key={index} className="relative group aspect-square">
+                    <img
+                      src={img}
+                      alt={`Venue ${index + 1}`}
+                      className="w-full h-full object-cover rounded-xl border border-border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '';
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    >
+                      <X className="h-3 w-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Upload + button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploading ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Plus className="h-5 w-5 text-primary" />
+                      </div>
+                      <span className="text-xs text-muted-foreground text-center px-2">
+                        Add Image
+                      </span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              {formData.images.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {formData.images.map((img, index) => (
-                    <div key={index} className="relative group">
-                      <img 
-                        src={img} 
-                        alt={`Venue ${index + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-destructive rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3 text-white" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Supported: JPG, PNG, WebP, GIF · Max 5MB per image · Multiple selection allowed
+              </p>
             </div>
 
             {/* Amenities */}
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Amenities</h3>
-              
+
               <div className="flex gap-2">
                 <Input
                   placeholder="Enter amenity (e.g., WiFi, Parking)"
@@ -368,9 +453,9 @@ export default function AdminVenueForm() {
               {formData.amenities.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {formData.amenities.map((amenity, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="secondary" 
+                    <Badge
+                      key={index}
+                      variant="secondary"
                       className="bg-secondary text-foreground flex items-center gap-1"
                     >
                       {amenity}
@@ -402,9 +487,9 @@ export default function AdminVenueForm() {
           </div>
 
           <div className="flex gap-4">
-            <Button 
-              type="submit" 
-              disabled={loading}
+            <Button
+              type="submit"
+              disabled={loading || uploading}
               className="gradient-primary flex-1"
             >
               {loading ? (
