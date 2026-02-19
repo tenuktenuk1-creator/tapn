@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code internal files
+.claude/
+
+# Vite cache timestamps
+vite.config.ts.timestamp-*.mjs
