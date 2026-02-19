@@ -31,3 +31,8 @@ vite.config.ts.timestamp-*.mjs
 
 # Vite cache timestamps
 vite.config.ts.timestamp-*.mjs
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.production
