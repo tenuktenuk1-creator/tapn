@@ -50,7 +50,8 @@ function isValidPhone(phone: string): boolean {
 }
 
 function isValidName(name: string): boolean {
-  return name.length >= 2 && name.length <= 100 && /^[a-zA-Z\s\-'.]+$/.test(name);
+  // Allow Latin, Cyrillic (Mongolian), spaces, hyphens, apostrophes, dots
+  return name.length >= 2 && name.length <= 100 && /^[\p{L}\s\-'.]+$/u.test(name);
 }
 
 function sanitizeString(input: string): string {
@@ -122,7 +123,7 @@ serve(async (req) => {
       throw new Error("Invalid name format. Please use letters, spaces, and basic punctuation only.");
     }
 
-    if (!isValidPhone(sanitizedPhone)) {
+    if (sanitizedPhone && !isValidPhone(sanitizedPhone)) {
       throw new Error("Invalid phone number format.");
     }
 
