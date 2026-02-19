@@ -59,7 +59,7 @@ export function useCancelBooking() {
   return useMutation({
     mutationFn: async (bookingId: string) => {
       const { data, error } = await supabase.functions.invoke('cancel-booking', {
-        body: { booking_id: bookingId },
+        body: { bookingId },
       });
       if (error || data?.error) throw new Error(data?.error || 'Failed to cancel booking');
       return data;
