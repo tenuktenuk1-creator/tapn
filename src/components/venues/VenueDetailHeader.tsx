@@ -110,7 +110,7 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
           {venue.price_per_hour && (
             <div>
               <span className="text-3xl font-display font-bold text-primary">
-                ${venue.price_per_hour.toLocaleString()}
+                ₮{venue.price_per_hour.toLocaleString()}
               </span>
               <span className="text-muted-foreground"> / hour</span>
             </div>
