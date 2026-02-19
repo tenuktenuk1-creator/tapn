@@ -153,11 +153,18 @@ export default function AdminDashboard() {
               <p className="text-muted-foreground">
                 Review pending bookings, approve or reject requests, and view history.
               </p>
-              <Link to="/admin/bookings">
-                <Button className="gradient-primary">
-                  Manage Bookings <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
+              <div className="flex gap-3">
+                <Link to="/admin/bookings">
+                  <Button className="gradient-primary">
+                    Manage Bookings <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/admin/bookings?status=confirmed">
+                  <Button variant="outline" className="border-border">
+                    View Confirmed
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>
