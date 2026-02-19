@@ -58,7 +58,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 
-type BookingStatus = 'confirmed' | 'cancelled';
+type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
 type SortOption = 'date' | 'created_at' | 'start_time';
 
 interface BookingWithDetails {
@@ -216,7 +216,8 @@ export default function AdminBookings() {
   };
 
   const getStatusBadge = (status: BookingStatus, paymentStatus: string) => {
-    const config = {
+    const config: Record<BookingStatus, { className: string; label: string }> = {
+      pending: { className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pending' },
       confirmed: { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Confirmed' },
       cancelled: { className: 'bg-gray-500/10 text-gray-500 border-gray-500/20', label: 'Cancelled' },
     };
@@ -284,6 +285,7 @@ export default function AdminBookings() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="confirmed">Confirmed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
@@ -412,7 +414,7 @@ export default function AdminBookings() {
                         {booking.guest_count}
                       </TableCell>
                       <TableCell className="text-foreground font-medium">
-                        {booking.total_price ? `$${(booking.total_price / 100).toLocaleString()}` : '-'}
+                        {booking.total_price ? `₮${(booking.total_price / 100).toLocaleString()}` : '-'}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {getStatusBadge(booking.status, booking.payment_status)}
@@ -549,7 +551,7 @@ export default function AdminBookings() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Total</span>
                         <span className="text-foreground font-medium">
-                          ${selectedBooking.total_price ? (selectedBooking.total_price / 100).toLocaleString() : '0'}
+                          ₮{selectedBooking.total_price ? (selectedBooking.total_price / 100).toLocaleString() : '0'}
                         </span>
                       </div>
                     </div>

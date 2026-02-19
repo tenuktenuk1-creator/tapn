@@ -3,16 +3,20 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useVenues } from '@/hooks/useVenues';
 import { useAdminBookings } from '@/hooks/useBookings';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Building2,
   Calendar,
   TrendingUp,
   ArrowRight,
   Clock,
-  DollarSign
+  DollarSign,
+  Users,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Navigate } from 'react-router-dom';
 
 export default function AdminDashboard() {
@@ -20,7 +24,18 @@ export default function AdminDashboard() {
   // Admin бүх venue харах ёстой — active болон inactive
   const { data: venues } = useVenues({ onlyActive: false });
   const { data: bookings } = useAdminBookings();
-  
+  const { data: pendingPartners } = useQuery({
+    queryKey: ['admin-pending-partners'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partner_venues')
+        .select('id')
+        .eq('status', 'pending');
+      if (error) throw error;
+      return data?.length || 0;
+    },
+  });
+
 
   if (loading) {
     return (
@@ -165,6 +180,30 @@ export default function AdminDashboard() {
                   </Button>
                 </Link>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-dark border-border md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Users className="h-5 w-5 text-primary" />
+                Partner Management
+                {(pendingPartners ?? 0) > 0 && (
+                  <Badge className="bg-yellow-500 text-black text-xs ml-2">
+                    {pendingPartners} pending
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Review partner venue requests, approve or reject submissions, and manage active partners.
+              </p>
+              <Link to="/admin/partners">
+                <Button className="gradient-primary">
+                  Manage Partners <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>

@@ -10,14 +10,12 @@ export function useIsPartner() {
     queryKey: ['is-partner', user?.id],
     queryFn: async () => {
       if (!user) return false;
-      
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .eq('role', 'partner')
         .maybeSingle();
-      
       if (error) throw error;
       return !!data;
     },
@@ -32,28 +30,19 @@ export function usePartnerVenues() {
     queryKey: ['partner-venues', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
-      // Get all venue IDs for this partner
       const { data: partnerVenues, error: pvError } = await supabase
         .from('partner_venues')
         .select('venue_id, status')
         .eq('user_id', user.id);
-      
       if (pvError) throw pvError;
       if (!partnerVenues?.length) return [];
-      
       const venueIds = partnerVenues.map(pv => pv.venue_id).filter(Boolean);
       if (!venueIds.length) return [];
-      
-      // Get venue details
       const { data: venues, error: vError } = await supabase
         .from('venues')
         .select('*')
         .in('id', venueIds);
-      
       if (vError) throw vError;
-      
-      // Combine with status
       return (venues || []).map(venue => ({
         ...venue,
         partnerStatus: partnerVenues.find(pv => pv.venue_id === venue.id)?.status || 'pending'
@@ -70,31 +59,80 @@ export function usePartnerBookings() {
     queryKey: ['partner-bookings', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
-      // Get partner's venue IDs
+      // Get partner's approved venue IDs
       const { data: partnerVenues, error: pvError } = await supabase
         .from('partner_venues')
         .select('venue_id')
         .eq('user_id', user.id)
         .eq('status', 'approved');
-      
       if (pvError) throw pvError;
       if (!partnerVenues?.length) return [];
-      
       const venueIds = partnerVenues.map(pv => pv.venue_id).filter(Boolean);
       if (!venueIds.length) return [];
-      
-      // Get bookings for these venues
       const { data: bookings, error: bError } = await supabase
         .from('bookings')
-        .select('*, venues(name)')
+        .select('*, venues(name, city)')
         .in('venue_id', venueIds)
         .order('booking_date', { ascending: false });
-      
       if (bError) throw bError;
       return bookings || [];
     },
     enabled: !!user,
+  });
+}
+
+// Partner confirms a booking (pending → confirmed)
+export function useConfirmBooking() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+        .eq('id', bookingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partner-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
+    },
+  });
+}
+
+// Partner declines a booking (pending → cancelled)
+export function useDeclineBooking() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', bookingId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partner-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['user-bookings'] });
+    },
+  });
+}
+
+export function useBecomePartner() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({ user_id: user.id, role: 'partner' as const });
+      if (error && !error.message.includes('duplicate')) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['is-partner'] });
+    },
   });
 }
 
@@ -110,72 +148,38 @@ type CreateVenueInput = {
   is_active?: boolean;
   images?: string[];
   amenities?: string[];
+  opening_hours?: Record<string, { open: string; close: string }> | null;
 };
-
-export function useBecomePartner() {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  
-  return useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('Not authenticated');
-      
-      // Add partner role
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          role: 'partner' as const
-        });
-      
-      if (error && !error.message.includes('duplicate')) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['is-partner'] });
-    },
-  });
-}
 
 export function useCreatePartnerVenue() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
   return useMutation({
     mutationFn: async (venue: CreateVenueInput) => {
       if (!user) throw new Error('Not authenticated');
-      
-      // Create venue
+      // Create venue as inactive — admin must approve
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
-        .insert({ ...venue, is_active: false }) // Start as inactive for review
+        .insert({ ...venue, is_active: false })
         .select()
         .single();
-      
       if (venueError) throw venueError;
-      
-      // Create partner_venue association
+      // Create partner_venue association as PENDING (admin must approve)
       const { error: pvError } = await supabase
         .from('partner_venues')
-        .insert({
-          user_id: user.id,
-          venue_id: venueData.id,
-          status: 'approved' // Auto-approve for demo
-        });
-      
+        .insert({ user_id: user.id, venue_id: venueData.id, status: 'pending' });
       if (pvError) throw pvError;
-      
       return venueData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
-      queryClient.invalidateQueries({ queryKey: ['venues'] });
+      queryClient.invalidateQueries({ queryKey: ['public-venues'] });
     },
   });
 }
 
 export function useUpdatePartnerVenue() {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async ({ id, ...venue }: Partial<Venue> & { id: string }) => {
       const { data, error } = await supabase
@@ -184,13 +188,11 @@ export function useUpdatePartnerVenue() {
         .eq('id', id)
         .select()
         .single();
-      
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['partner-venues'] });
-      queryClient.invalidateQueries({ queryKey: ['venues'] });
       queryClient.invalidateQueries({ queryKey: ['public-venues'] });
       queryClient.invalidateQueries({ queryKey: ['public-venue', data.id] });
     },

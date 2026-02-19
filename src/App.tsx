@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVenues from "./pages/admin/AdminVenues";
 import AdminVenueForm from "./pages/admin/AdminVenueForm";
 import AdminBookings from "./pages/admin/AdminBookings";
+import AdminPartners from "./pages/admin/AdminPartners";
 import PartnerLanding from "./pages/partner/PartnerLanding";
 import PartnerDashboard from "./pages/partner/PartnerDashboard";
 import PartnerVenues from "./pages/partner/PartnerVenues";
@@ -92,6 +93,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminBookings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/partners"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPartners />
                 </ProtectedRoute>
               }
             />
