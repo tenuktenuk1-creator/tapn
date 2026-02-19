@@ -155,11 +155,11 @@ export default function ProfilePage() {
     }
   };
 
-  // Filter bookings
+  // Filter bookings — show pending + confirmed as upcoming; cancelled as past
   const now = new Date();
-  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-  const upcomingBookings = confirmedBookings.filter(b => isAfter(new Date(b.booking_date), now) || format(new Date(b.booking_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
-  const pastBookings = confirmedBookings.filter(b => isBefore(new Date(b.booking_date), now) && format(new Date(b.booking_date), 'yyyy-MM-dd') !== format(now, 'yyyy-MM-dd'));
+  const activeBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
+  const upcomingBookings = activeBookings.filter(b => isAfter(new Date(b.booking_date), now) || format(new Date(b.booking_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
+  const pastBookings = bookings.filter(b => b.status === 'cancelled' || (b.status !== 'pending' && isBefore(new Date(b.booking_date), now) && format(new Date(b.booking_date), 'yyyy-MM-dd') !== format(now, 'yyyy-MM-dd')));
 
   return (
     <Layout>
