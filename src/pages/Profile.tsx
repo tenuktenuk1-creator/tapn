@@ -144,8 +144,8 @@ export default function ProfilePage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'confirmed':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Confirmed</Badge>;
+      case 'approved':
+        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">Approved</Badge>;
       case 'cancelled':
         return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">Cancelled</Badge>;
       case 'pending':
@@ -157,9 +157,9 @@ export default function ProfilePage() {
 
   // Filter bookings
   const now = new Date();
-  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-  const upcomingBookings = confirmedBookings.filter(b => isAfter(new Date(b.booking_date), now) || format(new Date(b.booking_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
-  const pastBookings = confirmedBookings.filter(b => isBefore(new Date(b.booking_date), now) && format(new Date(b.booking_date), 'yyyy-MM-dd') !== format(now, 'yyyy-MM-dd'));
+  const activeBookings = bookings.filter(b => b.status === 'approved' || b.status === 'pending');
+  const upcomingBookings = activeBookings.filter(b => isAfter(new Date(b.booking_date), now) || format(new Date(b.booking_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
+  const pastBookings = bookings.filter(b => b.status === 'cancelled' || (b.status !== 'pending' && isBefore(new Date(b.booking_date), now) && format(new Date(b.booking_date), 'yyyy-MM-dd') !== format(now, 'yyyy-MM-dd')));
 
   return (
     <Layout>

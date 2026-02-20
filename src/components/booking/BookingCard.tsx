@@ -12,9 +12,11 @@ interface BookingCardProps {
 }
 
 export function BookingCard({ booking, showActions, onCancel }: BookingCardProps) {
-  const statusColors = {
-    confirmed: 'bg-green-500/10 text-green-600 border-green-500/20',
+  const statusColors: Record<string, string> = {
+    approved:  'bg-green-500/10 text-green-600 border-green-500/20',
     cancelled: 'bg-muted text-muted-foreground border-border',
+    rejected:  'bg-red-500/10 text-red-600 border-red-500/20',
+    pending:   'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
   };
 
   return (
@@ -85,7 +87,7 @@ export function BookingCard({ booking, showActions, onCancel }: BookingCardProps
               </div>
             </div>
 
-            {showActions && booking.status === 'confirmed' && (
+            {showActions && booking.status === 'approved' && (
               <Button
                 size="sm"
                 variant="outline"

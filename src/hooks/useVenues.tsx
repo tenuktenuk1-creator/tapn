@@ -32,11 +32,11 @@ export function useVenues(filters?: VenueFilters) {
         q = q.ilike("city", `%${filters.city}%`);
       }
 
-      if (filters?.minPrice !== undefined) {
+      if (filters?.minPrice !== undefined && filters.minPrice > 0) {
         q = q.gte("price_per_hour", filters.minPrice);
       }
 
-      if (filters?.maxPrice !== undefined) {
+      if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
         q = q.lte("price_per_hour", filters.maxPrice);
       }
 
