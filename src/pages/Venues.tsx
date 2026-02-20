@@ -16,12 +16,12 @@ export default function VenuesPage() {
   const [city, setCity] = useState('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
 
-  const { data: venues, isLoading } = useVenues({
+  const { data: venues, isLoading, error } = useVenues({
     search,
     venueType,
     city,
-    minPrice: priceRange[0],
-    maxPrice: priceRange[1],
+    minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+    maxPrice: priceRange[1] < 500000 ? priceRange[1] : undefined,
   });
 
   return (
@@ -47,7 +47,12 @@ export default function VenuesPage() {
           />
         </div>
 
-        {isLoading ? (
+        {error ? (
+          <div className="text-center py-20">
+            <p className="text-destructive text-lg">Failed to load venues. Please try refreshing.</p>
+            <p className="text-muted-foreground text-sm mt-2">{(error as Error).message}</p>
+          </div>
+        ) : isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="card-dark rounded-2xl overflow-hidden">

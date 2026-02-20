@@ -21,7 +21,8 @@ export function Header() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    // Clear any stale cached data and redirect
+    window.location.href = '/';
   };
 
   return (
