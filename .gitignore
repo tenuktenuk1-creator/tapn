@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Vite cache files
+vite.config.ts.timestamp-*.mjs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,3 +31,8 @@ dist-ssr
 
 # Vite cache timestamps
 vite.config.ts.timestamp-*.mjs
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.production
