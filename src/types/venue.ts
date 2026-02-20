@@ -2,6 +2,7 @@ export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
 export type BookingStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
 export type PlannedNightStatus = 'upcoming' | 'completed' | 'cancelled';
+export type BusyStatus = 'quiet' | 'moderate' | 'busy';
 
 // Public venue data (excludes sensitive contact info)
 export interface PublicVenue {
@@ -22,6 +23,8 @@ export interface PublicVenue {
   is_active: boolean;
   vibe_tags: string[] | null;
   price_tier: PriceTier;
+  busy_status: BusyStatus;
+  busy_status_updated_at: string;
   created_at: string;
   updated_at: string;
 }
