@@ -1,6 +1,7 @@
 import { PublicVenue, venueTypeLabels } from '@/types/venue';
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, Clock } from 'lucide-react';
+import { FavoriteButton } from './FavoriteButton';
 
 interface VenueDetailHeaderProps {
   venue: PublicVenue;
@@ -17,16 +18,20 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
   // Format opening hours for display
   const formatOpeningHours = () => {
     if (!venue.opening_hours) return null;
-    
+
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
+    const DAYS_JS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayName = DAYS_JS[new Date().getDay()];
+
     return days.map((day, index) => {
       const hours = venue.opening_hours?.[day];
-      if (!hours) return { day: shortDays[index], hours: 'Closed' };
-      return { 
-        day: shortDays[index], 
-        hours: `${hours.open} - ${hours.close}` 
+      const isToday = day === todayName;
+      if (!hours) return { day: shortDays[index], hours: 'Closed', isToday };
+      return {
+        day: shortDays[index],
+        hours: `${hours.open} – ${hours.close}`,
+        isToday,
       };
     });
   };
@@ -38,7 +43,6 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
     if (venue.latitude && venue.longitude) {
       return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${venue.latitude},${venue.longitude}&zoom=15`;
     }
-    // Fallback to address search
     const address = encodeURIComponent(`${venue.address}, ${venue.city}`);
     return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${address}&zoom=15`;
   };
@@ -47,7 +51,7 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
     <div className="space-y-6">
       {/* Image Gallery */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 h-[300px] md:h-[400px]">
-        <div className="md:col-span-2 rounded-2xl overflow-hidden bg-muted">
+        <div className="md:col-span-2 rounded-2xl overflow-hidden bg-muted relative">
           {venue.images && venue.images.length > 0 ? (
             <img
               src={venue.images[0]}
@@ -61,6 +65,10 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
               </span>
             </div>
           )}
+          {/* Favorite icon overlay on main image */}
+          <div className="absolute top-3 right-3">
+            <FavoriteButton venueId={venue.id} venueName={venue.name} variant="icon" />
+          </div>
         </div>
         <div className="hidden md:grid grid-rows-2 gap-3">
           {venue.images?.slice(1, 3).map((img, i) => (
@@ -77,17 +85,17 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
       </div>
 
       {/* Venue Info */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div className="space-y-3 flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
             <Badge className={`${venueTypeColorMap[venue.venue_type]} text-white border-0`}>
               {venueTypeLabels[venue.venue_type]}
             </Badge>
-            {venue.rating > 0 && (
+            {Number(venue.rating) > 0 && (
               <div className="flex items-center gap-1">
-                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                <span className="font-semibold">{venue.rating.toFixed(1)}</span>
-                <span className="text-muted-foreground">({venue.review_count} reviews)</span>
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span className="font-semibold">{Number(venue.rating).toFixed(1)}</span>
+                <span className="text-muted-foreground text-sm">({venue.review_count} reviews)</span>
               </div>
             )}
           </div>
@@ -106,15 +114,17 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
           )}
         </div>
 
-        <div className="lg:text-right space-y-2">
+        {/* Price + Favorite button */}
+        <div className="flex flex-row lg:flex-col items-center lg:items-end gap-3 lg:text-right flex-shrink-0">
           {venue.price_per_hour && (
             <div>
               <span className="text-3xl font-display font-bold text-primary">
                 ₮{venue.price_per_hour.toLocaleString()}
               </span>
-              <span className="text-muted-foreground"> / hour</span>
+              <span className="text-muted-foreground"> / цаг</span>
             </div>
           )}
+          <FavoriteButton venueId={venue.id} venueName={venue.name} variant="full" />
         </div>
       </div>
 
@@ -126,10 +136,22 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
             Opening Hours
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-            {openingHours.map(({ day, hours }) => (
-              <div key={day} className="card-dark rounded-lg p-3 text-center">
-                <div className="text-xs font-medium text-muted-foreground mb-1">{day}</div>
-                <div className="text-sm font-medium">{hours}</div>
+            {openingHours.map(({ day, hours, isToday }) => (
+              <div
+                key={day}
+                className={`rounded-lg p-3 text-center transition-colors ${
+                  isToday
+                    ? 'bg-primary/10 border border-primary/30'
+                    : 'card-dark'
+                }`}
+              >
+                <div className={`text-xs font-medium mb-1 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {day}
+                  {isToday && <span className="block text-[10px]">today</span>}
+                </div>
+                <div className={`text-xs font-medium ${hours === 'Closed' ? 'text-muted-foreground/50' : isToday ? 'text-foreground' : ''}`}>
+                  {hours}
+                </div>
               </div>
             ))}
           </div>
