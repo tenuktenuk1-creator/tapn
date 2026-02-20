@@ -7,6 +7,7 @@ import {
   Calendar,
   ArrowLeft,
   X,
+  Check,
   Clock,
   User,
   Building2,
@@ -228,6 +229,34 @@ export default function AdminBookings() {
     }
   };
 
+  const handleConfirmBooking = async (bookingId: string) => {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'confirmed', updated_at: new Date().toISOString() })
+      .eq('id', bookingId);
+    if (error) {
+      toast.error('Failed to confirm booking');
+    } else {
+      toast.success('Booking confirmed');
+      fetchBookings();
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+    }
+  };
+
+  const handleRejectBooking = async (bookingId: string) => {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', bookingId);
+    if (error) {
+      toast.error('Failed to reject booking');
+    } else {
+      toast.success('Booking rejected');
+      fetchBookings();
+      queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+    }
+  };
+
   const canCancel = (status: string) =>
     status === 'pending' || status === 'confirmed' || status === 'approved';
 
@@ -401,7 +430,7 @@ export default function AdminBookings() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -410,11 +439,33 @@ export default function AdminBookings() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {booking.status === 'pending' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-green-500 hover:text-green-500 hover:bg-green-500/10 h-8 px-2"
+                                  onClick={() => handleConfirmBooking(booking.id)}
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Confirm
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-orange-500 hover:text-orange-500 hover:bg-orange-500/10 h-8 px-2"
+                                  onClick={() => handleRejectBooking(booking.id)}
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
                             {canCancel(booking.status) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-red-500 hover:text-red-500 hover:bg-red-500/10"
+                                className="text-red-500 hover:text-red-500 hover:bg-red-500/10 h-8 px-2"
                                 onClick={() => setConfirmCancelId(booking.id)}
                                 disabled={cancellingId === booking.id}
                               >
@@ -592,6 +643,31 @@ export default function AdminBookings() {
                       </Button>
                     </div>
 
+                    {selectedBooking.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            handleConfirmBooking(selectedBooking.id);
+                            setSelectedBooking(null);
+                          }}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Confirm
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-orange-500/50 text-orange-500 hover:bg-orange-500/10"
+                          onClick={() => {
+                            handleRejectBooking(selectedBooking.id);
+                            setSelectedBooking(null);
+                          }}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Reject
+                        </Button>
+                      </div>
+                    )}
                     {canCancel(selectedBooking.status) && (
                       <Button
                         variant="destructive"
