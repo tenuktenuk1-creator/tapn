@@ -128,28 +128,9 @@ export default function PartnerVenues() {
                       {venue.price_per_hour ? `₮${venue.price_per_hour.toLocaleString()}` : '-'}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {(venue as any).partnerStatus === 'pending' && (
-                          <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 border w-fit">
-                            Pending Approval
-                          </Badge>
-                        )}
-                        {(venue as any).partnerStatus === 'approved' && (
-                          <Badge variant={venue.is_active ? 'default' : 'secondary'}>
-                            {venue.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        )}
-                        {(venue as any).partnerStatus === 'rejected' && (
-                          <Badge className="bg-red-500/10 text-red-500 border-red-500/20 border w-fit">
-                            Rejected
-                          </Badge>
-                        )}
-                        {!(venue as any).partnerStatus && (
-                          <Badge variant={venue.is_active ? 'default' : 'secondary'}>
-                            {venue.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        )}
-                      </div>
+                      <Badge variant={venue.is_active ? 'default' : 'secondary'}>
+                        {venue.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <Link to={`/partner/venues/${venue.id}/edit`}>
