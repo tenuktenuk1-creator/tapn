@@ -1,5 +1,5 @@
 export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
-export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type BookingStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
 export type PlannedNightStatus = 'upcoming' | 'completed' | 'cancelled';
 
@@ -46,6 +46,7 @@ export interface Booking {
   payment_method: string | null;
   stripe_payment_intent_id: string | null;
   notes: string | null;
+  admin_notes: string | null;
   created_at: string;
   updated_at: string;
   // Guest contact info (for guest checkout)

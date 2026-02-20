@@ -88,7 +88,7 @@ export function useConfirmBooking() {
     mutationFn: async (bookingId: string) => {
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .update({ status: 'confirmed', updated_at: new Date().toISOString() })
         .eq('id', bookingId);
       if (error) throw error;
     },
