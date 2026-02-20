@@ -96,24 +96,6 @@ export const venueTypeLabels: Record<VenueType, string> = {
   lounge: 'Lounge',
 };
 
-export const venueTypeColors: Record<VenueType, string> = {
-  cafe: 'bg-venue-cafe',
-  karaoke: 'bg-venue-karaoke',
-  pool_snooker: 'bg-venue-pool',
-  lounge: 'bg-venue-lounge',
-};
-
-export const vibeTags = [
-  'chill',
-  'luxury',
-  'energetic',
-  'romantic',
-  'family-friendly',
-  'live-music',
-  'sports',
-  'rooftop',
-] as const;
-
 export const priceTierLabels: Record<PriceTier, string> = {
   budget: 'Budget',
   moderate: 'Moderate',
@@ -121,8 +103,3 @@ export const priceTierLabels: Record<PriceTier, string> = {
   luxury: 'Luxury',
 };
 
-export const plannedNightStatusLabels: Record<PlannedNightStatus, string> = {
-  upcoming: 'Upcoming',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};

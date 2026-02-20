@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/accordion';
 import {
   Search,
-  Eye,
   CalendarCheck,
   PartyPopper,
   ShieldCheck,
@@ -85,7 +84,7 @@ const pillars = [
 const faqItems = [
   {
     question: 'Do I need an account?',
-    answer: 'For the MVP, booking can be simple. If accounts exist on the site, keep the current flow.',
+    answer: 'You can browse venues without an account. To make a booking, you\'ll need to provide your contact info — creating a free account lets you track all your bookings in one place.',
   },
   {
     question: 'How do I pay?',
@@ -120,11 +119,11 @@ export default function HowItWorks() {
                 Explore Venues
               </Button>
             </Link>
-            <Link to="/partner">
+            <a href="mailto:support@tapn.mn">
               <Button variant="outline" className="rounded-full border-border bg-secondary/50 hover:bg-secondary text-foreground px-8">
                 Contact / Support
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </section>

@@ -143,13 +143,14 @@ export default function Index() {
           </form>
 
           {/* Partner CTA */}
-          <Button 
-            variant="outline" 
-            className="rounded-full border-border bg-secondary/50 hover:bg-secondary text-foreground px-8"
-            onClick={() => navigate('/#partner')}
-          >
-            Partner With TAPN <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
+          <Link to="/partner">
+            <Button
+              variant="outline"
+              className="rounded-full border-border bg-secondary/50 hover:bg-secondary text-foreground px-8"
+            >
+              Partner With TAPN <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </section>
 
@@ -315,12 +316,14 @@ export default function Index() {
           <p className="text-primary-foreground/80 max-w-2xl mx-auto mb-8 text-lg">
             TAPN gives venues exposure, direct bookings, customer analytics, and easier schedule management. Join hundreds of venues already thriving on our platform.
           </p>
-          <Button 
-            variant="outline" 
-            className="rounded-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 px-8"
-          >
-            Become a Partner <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
+          <Link to="/partner">
+            <Button
+              variant="outline"
+              className="rounded-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 px-8"
+            >
+              Become a Partner <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </section>
     </Layout>
