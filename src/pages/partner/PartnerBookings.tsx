@@ -43,9 +43,10 @@ export default function PartnerBookings() {
   if (!isPartner) return <Navigate to="/partner" replace />;
 
   const statusColors: Record<string, string> = {
-    confirmed: 'bg-green-500/10 text-green-500 border-green-500/20',
+    approved:  'bg-green-500/10 text-green-500 border-green-500/20',
     pending:   'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
     cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
+    rejected:  'bg-red-500/10 text-red-500 border-red-500/20',
   };
 
   const handleConfirm = async (bookingId: string) => {

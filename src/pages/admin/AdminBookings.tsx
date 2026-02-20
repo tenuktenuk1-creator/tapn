@@ -58,7 +58,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 
-type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 type SortOption = 'date' | 'created_at' | 'start_time';
 
 interface BookingWithDetails {
@@ -217,8 +217,9 @@ export default function AdminBookings() {
 
   const getStatusBadge = (status: BookingStatus, paymentStatus: string) => {
     const config: Record<BookingStatus, { className: string; label: string }> = {
-      pending: { className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pending' },
-      confirmed: { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Confirmed' },
+      pending:   { className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pending' },
+      approved:  { className: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Approved' },
+      rejected:  { className: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Rejected' },
       cancelled: { className: 'bg-gray-500/10 text-gray-500 border-gray-500/20', label: 'Cancelled' },
     };
 
@@ -286,7 +287,8 @@ export default function AdminBookings() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
@@ -429,7 +431,7 @@ export default function AdminBookings() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {booking.status === 'confirmed' && (
+                          {booking.status === 'approved' && (
                             <Button 
                               variant="ghost" 
                               size="sm" 
@@ -607,7 +609,7 @@ export default function AdminBookings() {
                   </div>
 
                   {/* Actions */}
-                  {selectedBooking.status === 'confirmed' && (
+                  {selectedBooking.status === 'approved' && (
                     <Button 
                       variant="destructive"
                       className="w-full"

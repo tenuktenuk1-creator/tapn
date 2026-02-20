@@ -37,7 +37,7 @@ export default function PartnerDashboard() {
   ).slice(0, 5) || [];
 
   const totalBookings = bookings?.length || 0;
-  const confirmedBookings = bookings?.filter(b => b.status === 'confirmed').length || 0;
+  const confirmedBookings = bookings?.filter(b => b.status === 'approved').length || 0;
 
   return (
     <Layout>

@@ -1,5 +1,5 @@
 export type VenueType = 'cafe' | 'karaoke' | 'pool_snooker' | 'lounge';
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';
+export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type PriceTier = 'budget' | 'moderate' | 'premium' | 'luxury';
 export type PlannedNightStatus = 'upcoming' | 'completed' | 'cancelled';
 

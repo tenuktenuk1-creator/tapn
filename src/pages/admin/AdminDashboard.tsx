@@ -54,11 +54,11 @@ export default function AdminDashboard() {
   const totalVenues = venues?.length || 0;
   const activeVenues = venues?.filter(v => v.is_active)?.length || 0;
   const totalBookings = bookings?.length || 0;
-  const confirmedBookings = bookings?.filter(b => b.status === 'confirmed')?.length || 0;
+  const confirmedBookings = bookings?.filter(b => b.status === 'approved')?.length || 0;
 
   // Calculate total revenue from confirmed bookings
   const totalRevenue = bookings
-    ?.filter(b => b.status === 'confirmed' && b.payment_status === 'paid')
+    ?.filter(b => b.status === 'approved' && b.payment_status === 'paid')
     ?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
 
   const stats = [
@@ -174,9 +174,9 @@ export default function AdminDashboard() {
                     Manage Bookings <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Link to="/admin/bookings?status=confirmed">
+                <Link to="/admin/bookings?status=approved">
                   <Button variant="outline" className="border-border">
-                    View Confirmed
+                    View Approved
                   </Button>
                 </Link>
               </div>
