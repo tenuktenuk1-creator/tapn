@@ -29,13 +29,11 @@ export default function BookingSuccess() {
 
           {/* Title */}
           <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">
-            Booking <span className="text-gradient">{state ? 'Confirmed!' : 'Submitted!'}</span>
+            Booking <span className="text-gradient">Confirmed!</span>
           </h1>
 
           <p className="text-muted-foreground text-lg mb-8">
-            {state
-              ? "Your booking has been submitted. The venue will confirm your reservation shortly!"
-              : "Your booking request has been received."}
+            Your booking has been instantly confirmed. You're all set for an amazing night!
           </p>
 
           {/* Booking Details */}
@@ -75,12 +73,6 @@ export default function BookingSuccess() {
                   <span className="font-bold text-primary">₮{state.totalPrice.toLocaleString()}</span>
                 </div>
               )}
-              {state?.bookingId && (
-                <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
-                  <span>Booking ID</span>
-                  <span className="font-mono">#{state.bookingId.slice(0, 8).toUpperCase()}</span>
-                </div>
-              )}
             </div>
           )}
 
@@ -105,7 +97,7 @@ export default function BookingSuccess() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="font-medium text-yellow-500">Pending Confirmation</p>
+                  <p className="font-medium text-green-500">Confirmed</p>
                 </div>
               </div>
             </div>
