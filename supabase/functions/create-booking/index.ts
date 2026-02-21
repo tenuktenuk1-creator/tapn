@@ -130,13 +130,14 @@ serve(async (req) => {
       throw new Error("Missing required booking fields");
     }
 
-    if (!guest_name || !guest_phone || !guest_email) {
-      throw new Error("Guest contact information is required (name, phone, email)");
+    // Phone is optional (user may not have filled profile yet)
+    if (!guest_name || !guest_email) {
+      throw new Error("Guest contact information is required (name, email)");
     }
 
     // Server-side validation of guest data
     const sanitizedName = sanitizeString(guest_name);
-    const sanitizedPhone = sanitizeString(guest_phone);
+    const sanitizedPhone = guest_phone ? sanitizeString(guest_phone) : '';
     const sanitizedEmail = sanitizeString(guest_email).toLowerCase();
     const sanitizedNotes = notes ? sanitizeString(notes).substring(0, 500) : null;
 
@@ -229,7 +230,7 @@ serve(async (req) => {
         payment_method: "pay_at_venue",
         notes: sanitizedNotes ? `${sanitizedNotes}\n---\nLookup Token: ${bookingLookupToken}` : `Lookup Token: ${bookingLookupToken}`,
         guest_name: sanitizedName,
-        guest_phone: sanitizedPhone,
+        guest_phone: sanitizedPhone || null,
         guest_email: sanitizedEmail,
         user_id: verifiedUserId ?? null,
       })
