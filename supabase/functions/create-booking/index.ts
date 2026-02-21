@@ -87,19 +87,40 @@ serve(async (req) => {
       });
     }
 
+    // Verify authenticated user if Authorization header is present
+    let verifiedUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const supabaseAuth = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+          { auth: { persistSession: false } }
+        );
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user: authUser } } = await supabaseAuth.auth.getUser(token);
+        if (authUser) {
+          verifiedUserId = authUser.id;
+          logStep("Authenticated user verified", { userId: verifiedUserId });
+        }
+      } catch {
+        logStep("Auth token verification skipped (non-critical)");
+      }
+    }
+
     // Parse request body
     const body = await req.json();
-    const { 
-      venue_id, 
-      booking_date, 
-      start_time, 
-      end_time, 
-      guest_count, 
-      total_price, 
+    const {
+      venue_id,
+      booking_date,
+      start_time,
+      end_time,
+      guest_count,
+      total_price,
       notes,
       guest_name,
       guest_phone,
-      guest_email 
+      guest_email
     } = body;
     
     logStep("Booking request received", { venue_id, booking_date, start_time, end_time, total_price, guest_email, clientIp });
@@ -210,6 +231,7 @@ serve(async (req) => {
         guest_name: sanitizedName,
         guest_phone: sanitizedPhone,
         guest_email: sanitizedEmail,
+        user_id: verifiedUserId ?? null,
       })
       .select()
       .single();
