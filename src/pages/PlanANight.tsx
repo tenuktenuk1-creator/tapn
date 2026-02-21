@@ -50,14 +50,20 @@ export default function PlanANight() {
   
   const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
-  const [startTime, setStartTime] = useState('18:00');
-  const [endTime, setEndTime] = useState('20:00');
+  const [startTime, setStartTime] = useState('20:00');
+  const [endTime, setEndTime] = useState('22:00');
   const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
 
-  const timeSlots = Array.from({ length: 10 }, (_, i) => {
-    const hour = i + 14; // 14..23
-    return `${hour.toString().padStart(2, "0")}:00`;
-  });  
+  // Full 24-hour time slots: 00:00 → 23:00
+  const timeSlots = Array.from({ length: 24 }, (_, i) =>
+    `${i.toString().padStart(2, "0")}:00`
+  );
+
+  // Midnight-crossing support: 23:00 → 01:00 is valid (2h span)
+  const startH = parseInt(startTime.split(":")[0]);
+  const endH = parseInt(endTime.split(":")[0]);
+  const isTimeRangeValid =
+    endH > startH || (startH >= 20 && endH <= 5 && endH !== startH);
 
   const addStop = () => {
     if (!selectedVenueId || !venues) return;
@@ -75,31 +81,29 @@ export default function PlanANight() {
     setPlannedStops([...plannedStops, newStop]);
     setSelectedVenueId('');
 
-
-    // Auto-advance times for next stop
-    const nextEndHour = parseInt(endTime.split(":")[0]) + 2;
+    // Auto-advance: next start = current end, next end = +2h (wraps past midnight)
+    const curEndH = parseInt(endTime.split(":")[0]);
+    const nextEndH = (curEndH + 2) % 24;
     setStartTime(endTime);
-
-    const clamped = Math.min(nextEndHour, 23);
-    setEndTime(`${clamped.toString().padStart(2, "0")}:00`);
-
+    setEndTime(`${nextEndH.toString().padStart(2, "0")}:00`);
   };
-  const isTimeRangeValid =
-  parseInt(endTime.split(":")[0]) >
-  parseInt(startTime.split(":")[0]);
   const removeStop = (id: string) => {
     setPlannedStops(plannedStops.filter(stop => stop.id !== id));
   };
 
+  // Duration-aware of midnight wrapping: 23:00→01:00 = 2h (not -22h)
+  const calcStopDuration = (start: string, end: string): number => {
+    const s = parseInt(start.split(':')[0]);
+    const e = parseInt(end.split(':')[0]);
+    return e > s ? e - s : 24 - s + e;
+  };
+
   const calculateTotalDuration = () => {
     if (plannedStops.length === 0) return 0;
-    let total = 0;
-    plannedStops.forEach(stop => {
-      const start = parseInt(stop.startTime.split(':')[0]);
-      const end = parseInt(stop.endTime.split(':')[0]);
-      total += end - start;
-    });
-    return total;
+    return plannedStops.reduce(
+      (total, stop) => total + calcStopDuration(stop.startTime, stop.endTime),
+      0
+    );
   };
 
   const handleSavePlan = async () => {
@@ -344,7 +348,10 @@ export default function PlanANight() {
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {stop.startTime} - {stop.endTime}
+                                {stop.startTime} – {stop.endTime}
+                                <span className="text-xs text-muted-foreground/60">
+                                  ({calcStopDuration(stop.startTime, stop.endTime)}h)
+                                </span>
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
