@@ -158,9 +158,10 @@ export function useCreatePartnerVenue() {
     mutationFn: async (venue: CreateVenueInput) => {
       if (!user) throw new Error('Not authenticated');
       // Create venue as inactive — admin must approve
+      // Set owner_id and created_by so partner can edit their own venue later
       const { data: venueData, error: venueError } = await supabase
         .from('venues')
-        .insert({ ...venue, is_active: false })
+        .insert({ ...venue, is_active: false, owner_id: user.id, created_by: user.id })
         .select()
         .single();
       if (venueError) throw venueError;
