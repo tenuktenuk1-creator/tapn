@@ -90,6 +90,10 @@ export function BookingForm({ venue }: BookingFormProps) {
     setIsLoading(true);
 
     try {
+      // Get current session token so edge function can verify + save user_id
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
       const { data, error } = await supabase.functions.invoke('create-booking', {
         body: {
           venue_id: venue.id,
@@ -105,6 +109,9 @@ export function BookingForm({ venue }: BookingFormProps) {
           guest_email: profile?.email || user.email || '',
           user_id: user.id,
         },
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {},
       });
 
       if (error || data?.error) {
