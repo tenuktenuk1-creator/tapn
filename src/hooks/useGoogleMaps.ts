@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
 
-// Singleton loader — one instance for the whole app lifetime.
-// This prevents duplicate script tags if the hook mounts in multiple places.
-let loaderInstance: Loader | null = null;
+// Configure the loader once at module level (v2 functional API)
+setOptions({
+  apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '',
+  version: 'weekly',
+});
+
+// Singleton promise — loads all required libraries once per session
 let loadPromise: Promise<void> | null = null;
 
-function getLoader(): Loader {
-  if (!loaderInstance) {
-    loaderInstance = new Loader({
-      apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '',
-      version: 'weekly',
-      libraries: ['marker', 'visualization'],
-    });
-  }
-  return loaderInstance;
+async function loadMapsLibraries(): Promise<void> {
+  // importLibrary populates the global `google.maps.*` namespace as a side effect
+  await Promise.all([
+    importLibrary('maps'),
+    importLibrary('marker'),
+    importLibrary('visualization'),
+  ]);
 }
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
@@ -29,12 +31,10 @@ export function useGoogleMaps() {
     if (status === 'idle') setStatus('loading');
 
     if (!loadPromise) {
-      loadPromise = getLoader()
-        .load()
-        .catch((err: Error) => {
-          loadPromise = null; // Allow retry on next mount
-          throw err;
-        });
+      loadPromise = loadMapsLibraries().catch((err: Error) => {
+        loadPromise = null; // Allow retry on next mount
+        throw err;
+      });
     }
 
     loadPromise
