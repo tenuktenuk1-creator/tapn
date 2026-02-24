@@ -34,6 +34,13 @@ const SORT_LABELS: Record<SortOption, string> = {
   open_now: 'Open Now First',
 };
 
+// Fixed map area height — parent has a defined height; map fills it via h-full.
+// Change this one constant to resize the map area across the page.
+const MAP_AREA_HEIGHT = 'h-[640px]';
+
+// Fixed side-panel width — identical in both list and map views.
+const PANEL_WIDTH = 'w-[400px]';
+
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
 function sortVenues(venues: PublicVenue[], sort: SortOption): PublicVenue[] {
@@ -86,7 +93,7 @@ export default function VenuesPage() {
   } | null>(null);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
-  // ── Sync state → URL (replace so Back button stays clean) ────────────────
+  // ── Sync state → URL ─────────────────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams();
     if (viewMode !== 'list') params.set('view', viewMode);
@@ -106,7 +113,7 @@ export default function VenuesPage() {
     maxPrice: priceRange[1],
   });
 
-  // ── Client-side filters (openNow, busyFilter) ─────────────────────────────
+  // ── Client-side filters ───────────────────────────────────────────────────
   const filteredVenues = useMemo(() => {
     if (!venues) return [];
     let result = venues as PublicVenue[];
@@ -126,16 +133,13 @@ export default function VenuesPage() {
   );
 
   // ── View mode switch ──────────────────────────────────────────────────────
-  const handleViewChange = useCallback(
-    (mode: ViewMode) => {
-      setViewMode(mode);
-      setSelectedVenueId(null);
-      trackEvent('view_changed', { mode });
-    },
-    [],
-  );
+  const handleViewChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    setSelectedVenueId(null);
+    trackEvent('view_changed', { mode });
+  }, []);
 
-  // ── Subcomponent: filter row + toggle (shared between views) ─────────────
+  // ── Filter row — rendered identically in both views ───────────────────────
   const filterRow = (
     <div className="flex gap-3 items-start flex-wrap">
       <div className="flex-1 min-w-0">
@@ -185,40 +189,98 @@ export default function VenuesPage() {
     </div>
   );
 
-  // ── MAP VIEW ──────────────────────────────────────────────────────────────
-  if (viewMode === 'map') {
-    return (
-      <Layout hideFooter>
-        {/*
-          Map layout: fixed height = viewport - header (~64px).
-          We use flex-col so the filter row + map area fill exactly.
-        */}
-        <div className="flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
-          {/* Header + filter row */}
-          <div className="flex-shrink-0 px-4 pt-4 pb-3 space-y-2 border-b border-border">
-            <div className="flex items-baseline gap-3">
-              <h1 className="font-display text-2xl font-bold">
-                <span className="text-foreground">Discover </span>
-                <span className="text-gradient">Venues</span>
-              </h1>
-              {!isLoading && (
-                <p className="text-muted-foreground text-sm">
-                  {sortedVenues.length} found
-                  {openCount > 0 && (
-                    <span className="ml-1.5 text-green-500 font-medium">
-                      · {openCount} open
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
-            {filterRow}
-          </div>
+  // ── Single Layout for both views — no shift on toggle ────────────────────
+  return (
+    <Layout>
+      <div className="container py-8">
 
-          {/* Map + panel area */}
-          <div className="flex flex-1 overflow-hidden gap-3 p-3 min-h-0">
-            {/* Side panel — desktop only */}
-            <div className="hidden lg:flex w-80 xl:w-96 flex-shrink-0 min-h-0">
+        {/* Header — same markup in both views */}
+        <div className="mb-6">
+          <h1 className="font-display text-3xl md:text-4xl font-bold mb-1">
+            <span className="text-foreground">Discover </span>
+            <span className="text-gradient">Venues</span>
+          </h1>
+          {!isLoading && (
+            <p className="text-muted-foreground text-sm">
+              {sortedVenues.length} venue{sortedVenues.length !== 1 ? 's' : ''} found
+              {openCount > 0 && (
+                <span className="ml-2 text-green-500 font-medium">
+                  · {openCount} open now
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* Filter row — same markup in both views */}
+        <div className="mb-6">{filterRow}</div>
+
+        {/* ── LIST VIEW ──────────────────────────────────────────────────── */}
+        {viewMode === 'list' && (
+          <>
+            {/* Sort bar */}
+            {!isLoading && sortedVenues.length > 0 && (
+              <div className="flex items-center justify-end mb-4 gap-2">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) => setSortBy(v as SortOption)}
+                >
+                  <SelectTrigger className="w-48 h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {SORT_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Grid */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="card-dark rounded-2xl overflow-hidden">
+                    <Skeleton className="aspect-[4/3]" />
+                    <div className="p-5 space-y-3">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sortedVenues.length === 0 ? (
+              <div className="text-center py-20">
+                <p className="text-muted-foreground text-lg">
+                  No venues found matching your criteria.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedVenues.map((venue) => (
+                  <VenueCard key={venue.id} venue={venue} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── MAP VIEW ───────────────────────────────────────────────────── */}
+        {viewMode === 'map' && (
+          /*
+           * Parent has a fixed pixel height — MapContainer fills it via h-full.
+           * No 100vh, no viewport sizing inside this container.
+           */
+          <div className={`flex gap-3 ${MAP_AREA_HEIGHT}`}>
+
+            {/* Side panel — fixed width, desktop only */}
+            <div className={`hidden lg:flex ${PANEL_WIDTH} flex-shrink-0`}>
               <VenueMapPanel
                 venues={sortedVenues}
                 selectedVenueId={selectedVenueId}
@@ -228,8 +290,8 @@ export default function VenuesPage() {
               />
             </div>
 
-            {/* Map */}
-            <div className="flex-1 relative min-h-0">
+            {/* Map — fills remaining width; height comes from flex parent */}
+            <div className="flex-1 relative min-w-0">
               <MapContainer
                 venues={sortedVenues}
                 selectedVenueId={selectedVenueId}
@@ -240,7 +302,7 @@ export default function VenuesPage() {
                 onOpenNowChange={setOpenNow}
               />
 
-              {/* Mobile bottom bar — shows count + opens sheet */}
+              {/* Mobile: floating bar at map bottom → opens Drawer */}
               <div className="lg:hidden absolute bottom-3 left-3 right-3 z-[4]">
                 <Drawer.Root open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
                   <Drawer.Trigger asChild>
@@ -268,7 +330,6 @@ export default function VenuesPage() {
                   <Drawer.Portal>
                     <Drawer.Overlay className="fixed inset-0 bg-black/40 z-[50]" />
                     <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[51] flex flex-col rounded-t-2xl bg-background border-t border-border max-h-[85vh]">
-                      {/* Drag handle */}
                       <div className="flex-shrink-0 flex justify-center pt-3 pb-2">
                         <div className="w-10 h-1 rounded-full bg-border" />
                       </div>
@@ -291,86 +352,8 @@ export default function VenuesPage() {
               </div>
             </div>
           </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // ── LIST VIEW (unchanged layout, new filter props) ────────────────────────
-  return (
-    <Layout>
-      <div className="container py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-1">
-            <span className="text-foreground">Discover </span>
-            <span className="text-gradient">Venues</span>
-          </h1>
-          {!isLoading && venues && (
-            <p className="text-muted-foreground text-sm">
-              {sortedVenues.length} venue{sortedVenues.length !== 1 ? 's' : ''} found
-              {openCount > 0 && (
-                <span className="ml-2 text-green-500 font-medium">
-                  · {openCount} open now
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-
-        {/* Filter row with toggle */}
-        <div className="mb-6">{filterRow}</div>
-
-        {/* Sort bar */}
-        {!isLoading && sortedVenues.length > 0 && (
-          <div className="flex items-center justify-end mb-4 gap-2">
-            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={sortBy}
-              onValueChange={(v) => setSortBy(v as SortOption)}
-            >
-              <SelectTrigger className="w-48 h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
-                  <SelectItem key={key} value={key}>
-                    {SORT_LABELS[key]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         )}
 
-        {/* Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="card-dark rounded-2xl overflow-hidden">
-                <Skeleton className="aspect-[4/3]" />
-                <div className="p-5 space-y-3">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-10 w-full rounded-xl" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : sortedVenues.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground text-lg">
-              No venues found matching your criteria.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedVenues.map((venue) => (
-              <VenueCard key={venue.id} venue={venue} />
-            ))}
-          </div>
-        )}
       </div>
     </Layout>
   );
