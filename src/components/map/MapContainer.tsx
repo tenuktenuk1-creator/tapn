@@ -10,138 +10,142 @@ import { useGoogleMaps } from '@/hooks/useGoogleMaps';
 import { PublicVenue } from '@/types/venue';
 import {
   BUSY_HEX,
-  BUSY_LABELS,
   DEFAULT_CENTER,
-  isVenueOpenNow,
   trackEvent,
 } from '@/lib/mapUtils';
 import { MapControls } from './MapControls';
+import { MapFloatingPanel } from './MapFloatingPanel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, MapPin } from 'lucide-react';
+import { RefreshCw, MapPin, LayoutList } from 'lucide-react';
 
-// ─── Dark map styles — matches the app's dark theme ─────────────────────────
+// ─── Enhanced dark map style with pink/purple highway accents (Feature 6) ─────
+
 const DARK_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8892b0' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
-  {
-    featureType: 'administrative',
-    elementType: 'geometry',
-    stylers: [{ color: '#2d2d44' }],
-  },
+  // Base geometry — deep near-black navy
+  { elementType: 'geometry', stylers: [{ color: '#0d0d1a' }] },
+  // Global label colours
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0d1a' }] },
+  // Hide all POIs so venues stand out
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0f0f1e' }] },
+  // Administrative
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
   {
     featureType: 'administrative.locality',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#bdbdbd' }],
+    stylers: [{ color: '#9ca3af' }],
   },
-  {
-    featureType: 'poi.park',
-    elementType: 'geometry',
-    stylers: [{ color: '#181829' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.fill',
-    stylers: [{ color: '#2c2c42' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#9e9e9e' }],
-  },
-  {
-    featureType: 'road.arterial',
-    elementType: 'geometry',
-    stylers: [{ color: '#373750' }],
-  },
+  // Roads — base fill/stroke
+  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#1a1a30' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0f0f22' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  // Arterial roads — slightly lighter
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#1e1e36' }] },
+  // Highways — purple/pink accent (Feature 6)
   {
     featureType: 'road.highway',
     elementType: 'geometry',
-    stylers: [{ color: '#3c3c55' }],
+    stylers: [{ color: '#2d1b4e' }],
   },
   {
-    featureType: 'transit',
-    elementType: 'geometry',
-    stylers: [{ color: '#1f1f30' }],
+    featureType: 'road.highway',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#6b21a8' }],
   },
   {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0e0e1a' }],
-  },
-  {
-    featureType: 'water',
+    featureType: 'road.highway',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#3d3d53' }],
+    stylers: [{ color: '#c084fc' }],
   },
+  // Transit
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#111118' }] },
+  // Water — very deep
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#050510' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#1e1e35' }] },
 ];
 
-// ─── Marker icon helpers ─────────────────────────────────────────────────────
+// ─── Venue marker icon (Features 4 + 9) ──────────────────────────────────────
+//
+// • All states share the same 44×44 canvas so the anchor never shifts.
+// • isHovered  → animated pulsing ring (marker hover → sync to card)
+// • isSelected → static ring
+// • withFadeIn → SVG <g> opacity 0→1 on mount (Feature 9)
+// • Requires optimized:false on the Marker for SMIL to render (Feature 9)
 
 function venueMarkerIcon(
   color: string,
   isSelected: boolean,
+  isHovered = false,
+  withFadeIn = false,
 ): google.maps.Icon {
-  const size = isSelected ? 44 : 36;
-  const r = isSelected ? 14 : 11;
-  const ring = isSelected
-    ? `<circle cx="${size / 2}" cy="${size / 2}" r="19" fill="none" stroke="${color}" stroke-width="2.5" opacity="0.45"/>`
-    : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${ring}<circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="${color}" stroke="white" stroke-width="${isSelected ? 3 : 2}"/></svg>`;
+  const SIZE = 44;
+  const cx = 22;
+  const cy = 22;
+  const r = isSelected ? 14 : isHovered ? 13 : 11;
+  const strokeW = isSelected ? 3 : 2;
+
+  // Outer ring element
+  let ringEl = '';
+  if (isSelected) {
+    ringEl = `<circle cx="${cx}" cy="${cy}" r="19" fill="none" stroke="${color}" stroke-width="2.5" opacity="0.45"/>`;
+  } else if (isHovered) {
+    // Animated pulsing ring (Feature 4)
+    ringEl = `<circle cx="${cx}" cy="${cy}" r="15" fill="none" stroke="${color}" stroke-width="2" opacity="0.45">
+      <animate attributeName="r" values="15;20;15" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.45;0.1;0.45" dur="1.4s" repeatCount="indefinite"/>
+    </circle>`;
+  }
+
+  // Wrap in <g> for a single fade-in over the whole marker (ring + dot)
+  const innerContent = `${ringEl}<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="white" stroke-width="${strokeW}"/>`;
+
+  const content = withFadeIn
+    ? `<g><animate attributeName="opacity" from="0" to="1" dur="0.3s" fill="freeze"/>${innerContent}</g>`
+    : innerContent;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">${content}</svg>`;
+
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(size, size),
-    anchor: new google.maps.Point(size / 2, size / 2),
+    scaledSize: new google.maps.Size(SIZE, SIZE),
+    anchor: new google.maps.Point(cx, cy),
   };
 }
+
+// ─── Cluster marker icon with glow filter (Feature 3) ────────────────────────
 
 function clusterMarkerIcon(count: number): google.maps.Icon {
   const label = count > 99 ? '99+' : String(count);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><defs><linearGradient id="cg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs><circle cx="22" cy="22" r="20" fill="url(#cg)" stroke="white" stroke-width="3"/><text x="22" y="27" text-anchor="middle" fill="white" font-size="13" font-weight="700" font-family="Outfit,sans-serif">${label}</text></svg>`;
+  // SVG feGaussianBlur glow + outer translucent ring + radial gradient fill
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
+  <defs>
+    <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <filter id="cglow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="28" cy="28" r="26" fill="rgba(168,85,247,0.12)" stroke="rgba(168,85,247,0.30)" stroke-width="1.5"/>
+  <circle cx="28" cy="28" r="19" fill="url(#cg)" filter="url(#cglow)" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
+  <text x="28" y="33" text-anchor="middle" fill="white" font-size="12" font-weight="700" font-family="Outfit,sans-serif">${label}</text>
+</svg>`;
+
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(44, 44),
-    anchor: new google.maps.Point(22, 22),
+    scaledSize: new google.maps.Size(56, 56),
+    anchor: new google.maps.Point(28, 28),
   };
 }
 
-// ─── InfoWindow HTML template ────────────────────────────────────────────────
-
-function buildInfoWindowContent(venue: PublicVenue): string {
-  const isOpen = isVenueOpenNow(venue);
-  const busyColor = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${venue.latitude},${venue.longitude}`;
-  const price = venue.price_per_hour
-    ? venue.price_per_hour >= 1000
-      ? `₮${(venue.price_per_hour / 1000).toFixed(0)}K/цаг`
-      : `₮${venue.price_per_hour}/цаг`
-    : null;
-  const img = venue.images?.[0]
-    ? `<img src="${venue.images[0]}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;" alt="" />`
-    : '';
-
-  return `<div style="font-family:Outfit,sans-serif;background:#1a1a2e;color:#f1f5f9;border-radius:12px;padding:12px 14px;min-width:200px;max-width:260px;">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-    ${img}
-    <div style="min-width:0;flex:1;">
-      <h3 style="margin:0 0 3px;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${venue.name}</h3>
-      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-        <span style="background:${busyColor};color:white;padding:1px 7px;border-radius:9999px;font-size:10px;font-weight:700;">${BUSY_LABELS[venue.busy_status]}</span>
-        <span style="font-size:11px;color:${isOpen ? '#22c55e' : '#64748b'};">${isOpen ? '● Open' : '● Closed'}</span>
-      </div>
-    </div>
-  </div>
-  <p style="margin:0 0 2px;font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${venue.address || venue.city}</p>
-  ${price ? `<p style="margin:0 0 10px;font-size:11px;color:#a855f7;font-weight:500;">${price}</p>` : '<div style="margin-bottom:10px;"></div>'}
-  <div style="display:flex;gap:6px;">
-    <a href="/venues/${venue.id}" style="flex:1;background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.4);padding:6px 0;border-radius:8px;text-align:center;font-size:12px;font-weight:500;text-decoration:none;display:block;">View</a>
-    <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.4);padding:6px 10px;border-radius:8px;font-size:12px;font-weight:500;text-decoration:none;display:block;white-space:nowrap;">Directions</a>
-  </div>
-</div>`;
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export interface MapContainerProps {
   venues: PublicVenue[];
@@ -151,6 +155,8 @@ export interface MapContainerProps {
   onUserLocationChange: (loc: { lat: number; lng: number } | null) => void;
   openNow: boolean;
   onOpenNowChange: (value: boolean) => void;
+  /** Whether venue data is still loading — forwarded to the floating panel */
+  isLoading: boolean;
 }
 
 export const MapContainer = memo(function MapContainer({
@@ -161,8 +167,9 @@ export const MapContainer = memo(function MapContainer({
   onUserLocationChange,
   openNow,
   onOpenNowChange,
+  isLoading,
 }: MapContainerProps) {
-  const { isLoading, isReady, isError, error } = useGoogleMaps();
+  const { isLoading: mapsLoading, isReady, isError, error } = useGoogleMaps();
 
   // DOM refs
   const mapDivRef = useRef<HTMLDivElement>(null);
@@ -172,11 +179,10 @@ export const MapContainer = memo(function MapContainer({
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const clustererRef = useRef<MarkerClusterer | null>(null);
-  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Stable refs so marker click handlers never go stale
+  // Stable callback ref — marker click handlers read the latest onVenueSelect
   const onVenueSelectRef = useRef(onVenueSelect);
   useEffect(() => {
     onVenueSelectRef.current = onVenueSelect;
@@ -187,12 +193,16 @@ export const MapContainer = memo(function MapContainer({
     venuesRef.current = venues;
   }, [venues]);
 
-  // Fullscreen state
+  // Floating panel visibility + hover sync (Feature 1 + 4)
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [hoveredVenueId, setHoveredVenueId] = useState<string | null>(null);
+
+  // Fullscreen
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [cssFallbackFs, setCssFallbackFs] = useState(false);
   const [fullscreenSupported] = useState(() => !!document.fullscreenEnabled);
 
-  // ── Initialize map (only once when API is ready) ──────────────────────────
+  // ── Initialize map (once when Maps API is ready) ──────────────────────────
   useEffect(() => {
     if (!isReady || !mapDivRef.current || mapRef.current) return;
 
@@ -211,9 +221,8 @@ export const MapContainer = memo(function MapContainer({
 
     mapRef.current = map;
 
-    // Click on map background deselects venue and closes info window
+    // Map background click → deselect venue
     map.addListener('click', () => {
-      infoWindowRef.current?.close();
       onVenueSelectRef.current(null);
     });
 
@@ -225,13 +234,7 @@ export const MapContainer = memo(function MapContainer({
       }, 300);
     });
 
-    // Shared info window — reused for all markers
-    infoWindowRef.current = new google.maps.InfoWindow({
-      maxWidth: 280,
-      disableAutoPan: false,
-    });
-
-    // Marker clusterer with brand-styled cluster icons
+    // Marker clusterer with brand-styled cluster icons (Feature 3)
     clustererRef.current = new MarkerClusterer({
       map,
       renderer: {
@@ -252,7 +255,7 @@ export const MapContainer = memo(function MapContainer({
     };
   }, [isReady]);
 
-  // ── Rebuild markers when venue list changes ───────────────────────────────
+  // ── Rebuild all markers when venue list changes ───────────────────────────
   useEffect(() => {
     if (!isReady || !mapRef.current || !clustererRef.current) return;
 
@@ -274,22 +277,25 @@ export const MapContainer = memo(function MapContainer({
       const marker = new google.maps.Marker({
         position: { lat: venue.latitude, lng: venue.longitude },
         title: venue.name,
-        icon: venueMarkerIcon(color, isSelected),
+        // withFadeIn=true: each new marker fades in (Feature 9)
+        icon: venueMarkerIcon(color, isSelected, false, true),
         zIndex: isSelected ? 100 : 1,
-        optimized: true,
+        // Required for SMIL animations to render (Feature 9)
+        optimized: false,
       });
 
+      // Marker click → select venue + open floating panel
       marker.addListener('click', () => {
-        // Always read from refs so we have the latest venue data
         const current = venuesRef.current.find((v) => v.id === venue.id) ?? venue;
         onVenueSelectRef.current(current.id);
+        setIsPanelOpen(true);
         trackEvent('marker_clicked', { venueId: current.id, venueName: current.name });
-
-        if (infoWindowRef.current && mapRef.current) {
-          infoWindowRef.current.setContent(buildInfoWindowContent(current));
-          infoWindowRef.current.open({ anchor: marker, map: mapRef.current });
-        }
       });
+
+      // Hover sync: marker hover → highlight card in panel (Feature 4)
+      // setHoveredVenueId is a stable React setter — no stale closure issue
+      marker.addListener('mouseover', () => setHoveredVenueId(venue.id));
+      marker.addListener('mouseout', () => setHoveredVenueId(null));
 
       markersRef.current.set(venue.id, marker);
       newMarkers.push(marker);
@@ -299,22 +305,20 @@ export const MapContainer = memo(function MapContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venues, isReady]);
 
-  // ── Update marker styles when selection changes (no re-creation) ──────────
+  // ── Update marker icons when selection or hover changes ───────────────────
+  // (no fade-in on updates — avoids re-triggering animation on every hover)
   useEffect(() => {
     if (!isReady) return;
     markersRef.current.forEach((marker, id) => {
       const venue = venuesRef.current.find((v) => v.id === id);
       if (!venue) return;
-      const isSelected = id === selectedVenueId;
+      const isSel = id === selectedVenueId;
+      const isHov = id === hoveredVenueId;
       const color = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
-      marker.setIcon(venueMarkerIcon(color, isSelected));
-      marker.setZIndex(isSelected ? 100 : 1);
+      marker.setIcon(venueMarkerIcon(color, isSel, isHov, false));
+      marker.setZIndex(isSel ? 100 : isHov ? 50 : 1);
     });
-    // Close info window when deselecting
-    if (!selectedVenueId) {
-      infoWindowRef.current?.close();
-    }
-  }, [selectedVenueId, isReady]);
+  }, [selectedVenueId, hoveredVenueId, isReady]);
 
   // ── Pan to selected venue ─────────────────────────────────────────────────
   useEffect(() => {
@@ -336,7 +340,6 @@ export const MapContainer = memo(function MapContainer({
         mapRef.current!.panTo(loc);
         mapRef.current!.setZoom(15);
 
-        // Place / update the "you are here" marker
         if (userMarkerRef.current) {
           userMarkerRef.current.setPosition(loc);
         } else {
@@ -357,7 +360,6 @@ export const MapContainer = memo(function MapContainer({
         }
       },
       () => {
-        // Location denied — silently keep default center
         console.info('[TAPN] Geolocation denied, staying at default center.');
       },
     );
@@ -369,7 +371,6 @@ export const MapContainer = memo(function MapContainer({
 
     if (!document.fullscreenElement && !cssFallbackFs) {
       containerRef.current.requestFullscreen().catch(() => {
-        // CSS fallback when native fullscreen is unavailable
         setCssFallbackFs(true);
         setIsFullscreen(true);
         trackEvent('fullscreen_entered');
@@ -377,23 +378,19 @@ export const MapContainer = memo(function MapContainer({
     } else if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
-      // Exit CSS fallback
       setCssFallbackFs(false);
       setIsFullscreen(false);
       trackEvent('fullscreen_exited');
     }
   }, [cssFallbackFs]);
 
-  // Sync fullscreen state with native Fullscreen API events
+  // Sync fullscreen state with the native Fullscreen API
   useEffect(() => {
     const handler = () => {
       const active = !!document.fullscreenElement;
       setIsFullscreen(active);
       if (!active) setCssFallbackFs(false);
-      // Tell Google Maps to recalculate its size
-      if (mapRef.current) {
-        google.maps.event.trigger(mapRef.current, 'resize');
-      }
+      if (mapRef.current) google.maps.event.trigger(mapRef.current, 'resize');
       trackEvent(active ? 'fullscreen_entered' : 'fullscreen_exited');
     };
     document.addEventListener('fullscreenchange', handler);
@@ -415,7 +412,7 @@ export const MapContainer = memo(function MapContainer({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (mapsLoading) {
     return (
       <div className="relative w-full h-full rounded-xl overflow-hidden">
         <Skeleton className="absolute inset-0 rounded-xl" />
@@ -454,10 +451,44 @@ export const MapContainer = memo(function MapContainer({
         cssFallbackFs ? 'fixed inset-0 z-[9999] rounded-none' : ''
       }`}
     >
-      {/* The Google Maps DOM node */}
+      {/* Google Maps DOM node */}
       <div ref={mapDivRef} className="absolute inset-0" />
 
-      {/* Overlay controls */}
+      {/* ── Floating glass panel — desktop only (Feature 1) ──────────────── */}
+      <MapFloatingPanel
+        venues={venues}
+        selectedVenueId={selectedVenueId}
+        hoveredVenueId={hoveredVenueId}
+        userLocation={userLocation}
+        isLoading={isLoading}
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        onVenueSelect={(id) => {
+          onVenueSelect(id);
+          trackEvent('panel_venue_selected', { venueId: id });
+        }}
+        onVenueHover={setHoveredVenueId}
+      />
+
+      {/* ── Re-open panel button — desktop only, shown when panel is closed ── */}
+      {!isPanelOpen && (
+        <button
+          type="button"
+          onClick={() => setIsPanelOpen(true)}
+          className="absolute left-3 top-3 z-[4] hidden lg:flex items-center gap-2 bg-background/90 backdrop-blur-sm border border-border rounded-xl px-3 py-2.5 text-sm font-medium text-foreground shadow-lg hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Show venue list"
+        >
+          <LayoutList className="h-4 w-4 text-primary" />
+          <span>Venues</span>
+          {venues.length > 0 && (
+            <span className="ml-0.5 bg-primary/20 text-primary text-xs px-1.5 py-0.5 rounded-full font-semibold">
+              {venues.length}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* ── Map controls — top right ─────────────────────────────────────── */}
       <MapControls
         onLocate={handleLocate}
         isFullscreen={isFullscreen}

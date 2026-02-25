@@ -15,8 +15,12 @@ import {
 interface MapVenueCardProps {
   venue: PublicVenue;
   isSelected?: boolean;
+  /** True when the corresponding map marker is being hovered (Feature 4) */
+  isHovered?: boolean;
   userLocation: { lat: number; lng: number } | null;
   onClick?: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 const VENUE_TYPE_COLORS: Record<string, string> = {
@@ -35,8 +39,11 @@ function formatPrice(price: number | null): string | null {
 export const MapVenueCard = memo(function MapVenueCard({
   venue,
   isSelected,
+  isHovered,
   userLocation,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
 }: MapVenueCardProps) {
   const isOpen = isVenueOpenNow(venue);
 
@@ -62,9 +69,13 @@ export const MapVenueCard = memo(function MapVenueCard({
       onKeyDown={(e) =>
         (e.key === 'Enter' || e.key === ' ') && onClick?.()
       }
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={`flex gap-3 p-3 rounded-xl cursor-pointer transition-all border outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         isSelected
           ? 'border-primary bg-primary/10'
+          : isHovered
+          ? 'border-primary/50 bg-primary/5'
           : 'border-border bg-secondary/40 hover:bg-secondary/80'
       }`}
     >

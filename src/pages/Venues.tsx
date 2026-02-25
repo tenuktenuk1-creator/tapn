@@ -38,9 +38,6 @@ const SORT_LABELS: Record<SortOption, string> = {
 // Change this one constant to resize the map area across the page.
 const MAP_AREA_HEIGHT = 'h-[640px]';
 
-// Fixed side-panel width — identical in both list and map views.
-const PANEL_WIDTH = 'w-[400px]';
-
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
 function sortVenues(venues: PublicVenue[], sort: SortOption): PublicVenue[] {
@@ -274,82 +271,71 @@ export default function VenuesPage() {
         {/* ── MAP VIEW ───────────────────────────────────────────────────── */}
         {viewMode === 'map' && (
           /*
-           * Parent has a fixed pixel height — MapContainer fills it via h-full.
-           * No 100vh, no viewport sizing inside this container.
+           * Map fills full width — desktop floating panel is rendered inside
+           * MapContainer as a glass overlay (Feature 1). Mobile uses a Drawer.
+           * Parent has a fixed pixel height; MapContainer fills it via h-full.
            */
-          <div className={`flex gap-3 ${MAP_AREA_HEIGHT}`}>
+          <div className={`relative ${MAP_AREA_HEIGHT}`}>
 
-            {/* Side panel — fixed width, desktop only */}
-            <div className={`hidden lg:flex ${PANEL_WIDTH} flex-shrink-0`}>
-              <VenueMapPanel
-                venues={sortedVenues}
-                selectedVenueId={selectedVenueId}
-                userLocation={userLocation}
-                isLoading={isLoading}
-                onVenueSelect={setSelectedVenueId}
-              />
-            </div>
+            {/* Map — full width; glass floating panel lives inside MapContainer */}
+            <MapContainer
+              venues={sortedVenues}
+              selectedVenueId={selectedVenueId}
+              onVenueSelect={setSelectedVenueId}
+              userLocation={userLocation}
+              onUserLocationChange={setUserLocation}
+              openNow={openNow}
+              onOpenNowChange={setOpenNow}
+              isLoading={isLoading}
+            />
 
-            {/* Map — fills remaining width; height comes from flex parent */}
-            <div className="flex-1 relative min-w-0">
-              <MapContainer
-                venues={sortedVenues}
-                selectedVenueId={selectedVenueId}
-                onVenueSelect={setSelectedVenueId}
-                userLocation={userLocation}
-                onUserLocationChange={setUserLocation}
-                openNow={openNow}
-                onOpenNowChange={setOpenNow}
-              />
+            {/* Mobile: floating bar at map bottom → opens Drawer */}
+            <div className="lg:hidden absolute bottom-3 left-3 right-3 z-[4]">
+              <Drawer.Root open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+                <Drawer.Trigger asChild>
+                  <button
+                    type="button"
+                    className="w-full bg-background/95 backdrop-blur-sm border border-border rounded-xl px-4 py-3 flex items-center justify-between shadow-lg"
+                    aria-label="Open venue list"
+                  >
+                    <span className="text-sm font-medium text-foreground">
+                      {isLoading
+                        ? 'Loading venues…'
+                        : `${sortedVenues.length} venue${sortedVenues.length !== 1 ? 's' : ''} found`}
+                      {openCount > 0 && !isLoading && (
+                        <span className="ml-1.5 text-green-500">
+                          · {openCount} open
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-xs text-primary font-medium">
+                      See list ↑
+                    </span>
+                  </button>
+                </Drawer.Trigger>
 
-              {/* Mobile: floating bar at map bottom → opens Drawer */}
-              <div className="lg:hidden absolute bottom-3 left-3 right-3 z-[4]">
-                <Drawer.Root open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-                  <Drawer.Trigger asChild>
-                    <button
-                      type="button"
-                      className="w-full bg-background/95 backdrop-blur-sm border border-border rounded-xl px-4 py-3 flex items-center justify-between shadow-lg"
-                      aria-label="Open venue list"
-                    >
-                      <span className="text-sm font-medium text-foreground">
-                        {isLoading
-                          ? 'Loading venues…'
-                          : `${sortedVenues.length} venue${sortedVenues.length !== 1 ? 's' : ''} found`}
-                        {openCount > 0 && !isLoading && (
-                          <span className="ml-1.5 text-green-500">
-                            · {openCount} open
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-xs text-primary font-medium">
-                        See list ↑
-                      </span>
-                    </button>
-                  </Drawer.Trigger>
-
-                  <Drawer.Portal>
-                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-[50]" />
-                    <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[51] flex flex-col rounded-t-2xl bg-background border-t border-border max-h-[85vh]">
-                      <div className="flex-shrink-0 flex justify-center pt-3 pb-2">
-                        <div className="w-10 h-1 rounded-full bg-border" />
-                      </div>
-                      <Drawer.Title className="sr-only">Venues list</Drawer.Title>
-                      <div className="flex-1 overflow-hidden">
-                        <VenueMapPanel
-                          venues={sortedVenues}
-                          selectedVenueId={selectedVenueId}
-                          userLocation={userLocation}
-                          isLoading={isLoading}
-                          onVenueSelect={(id) => {
-                            setSelectedVenueId(id);
-                            setMobileSheetOpen(false);
-                          }}
-                        />
-                      </div>
-                    </Drawer.Content>
-                  </Drawer.Portal>
-                </Drawer.Root>
-              </div>
+                <Drawer.Portal>
+                  <Drawer.Overlay className="fixed inset-0 bg-black/40 z-[50]" />
+                  <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[51] flex flex-col rounded-t-2xl bg-background border-t border-border max-h-[85vh]">
+                    <div className="flex-shrink-0 flex justify-center pt-3 pb-2">
+                      <div className="w-10 h-1 rounded-full bg-border" />
+                    </div>
+                    <Drawer.Title className="sr-only">Venues list</Drawer.Title>
+                    <div className="flex-1 overflow-hidden">
+                      <VenueMapPanel
+                        venues={sortedVenues}
+                        selectedVenueId={selectedVenueId}
+                        userLocation={userLocation}
+                        isLoading={isLoading}
+                        onVenueSelect={(id) => {
+                          setSelectedVenueId(id);
+                          setMobileSheetOpen(false);
+                        }}
+                      />
+                    </div>
+                  </Drawer.Content>
+                </Drawer.Portal>
+              </Drawer.Root>
             </div>
           </div>
         )}
