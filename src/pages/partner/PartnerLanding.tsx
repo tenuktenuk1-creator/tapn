@@ -3,11 +3,11 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsPartner, useBecomePartner } from '@/hooks/usePartner';
 import { useNavigate } from 'react-router-dom';
-import { Building2, TrendingUp, Calendar, Users, ChevronRight, CheckCircle } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, Users, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PartnerLanding() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshRole } = useAuth();
   const navigate = useNavigate();
   const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const becomePartner = useBecomePartner();
@@ -20,10 +20,19 @@ export default function PartnerLanding() {
 
     try {
       await becomePartner.mutateAsync();
+      // Refresh role in AuthContext so ProtectedRoute sees isPartner=true before navigating
+      await refreshRole(user.id);
       toast.success('Welcome to the TAPN Partner Program!');
       navigate('/partner/dashboard');
-    } catch (error) {
-      toast.error('Failed to join partner program');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('duplicate') || msg.includes('already')) {
+        // Already a partner row exists — sync and navigate
+        await refreshRole(user.id);
+        navigate('/partner/dashboard');
+      } else {
+        toast.error('Failed to join partner program. Please try again.');
+      }
     }
   };
 
@@ -60,7 +69,7 @@ export default function PartnerLanding() {
     );
   }
 
-  // If already a partner, redirect to dashboard
+  // If already a partner, show quick link to dashboard
   if (isPartner) {
     return (
       <Layout>
@@ -91,17 +100,26 @@ export default function PartnerLanding() {
               Partner With <span className="text-gradient">TAPN</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-8">
-              List your café, karaoke room, pool hall, or lounge and connect with 
+              List your café, karaoke room, pool hall, or lounge and connect with
               customers looking for the perfect venue for their night out.
             </p>
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               onClick={handleBecomePartner}
               disabled={becomePartner.isPending}
               className="gradient-primary text-lg px-8 py-6"
             >
-              {becomePartner.isPending ? 'Joining...' : 'Become a Partner'}
-              <ChevronRight className="ml-2 h-5 w-5" />
+              {becomePartner.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Joining…
+                </>
+              ) : (
+                <>
+                  Become a Partner
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -113,10 +131,10 @@ export default function PartnerLanding() {
           <h2 className="font-display text-3xl font-bold text-center mb-12">
             Why Partner With <span className="text-gradient">TAPN</span>?
           </h2>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {benefits.map((benefit) => (
-              <div 
+              <div
                 key={benefit.title}
                 className="card-dark p-6 rounded-2xl text-center"
               >
@@ -137,7 +155,7 @@ export default function PartnerLanding() {
           <h2 className="font-display text-3xl font-bold text-center mb-12">
             How It <span className="text-gradient">Works</span>
           </h2>
-          
+
           <div className="max-w-2xl mx-auto space-y-8">
             {[
               { step: '1', title: 'Sign Up', description: 'Create your partner account in seconds.' },
@@ -155,16 +173,25 @@ export default function PartnerLanding() {
               </div>
             ))}
           </div>
-          
+
           <div className="text-center mt-12">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               onClick={handleBecomePartner}
               disabled={becomePartner.isPending}
               className="gradient-primary"
             >
-              Get Started Now
-              <ChevronRight className="ml-2 h-4 w-4" />
+              {becomePartner.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Joining…
+                </>
+              ) : (
+                <>
+                  Get Started Now
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </>
+              )}
             </Button>
           </div>
         </div>

@@ -6,30 +6,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { 
-  Plus, 
-  Trash2, 
-  Clock, 
-  MapPin, 
+import {
+  Plus,
+  Trash2,
+  Clock,
+  MapPin,
   Calendar as CalendarIcon,
   Moon,
   Sparkles,
   ChevronRight,
   Save,
-  Loader2
+  Loader2,
+  Users,
+  Zap,
 } from 'lucide-react';
 import { useVenues } from '@/hooks/useVenues';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePlannedNight } from '@/hooks/usePlannedNights';
 import { PublicVenue, venueTypeLabels } from '@/types/venue';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -42,32 +45,46 @@ interface PlannedStop {
   endTime: string;
 }
 
+// KAN-48: Vibe options
+const VIBE_OPTIONS = [
+  { value: 'chill', label: '😌 Chill & Relaxed' },
+  { value: 'social', label: '🎉 Social & Lively' },
+  { value: 'romantic', label: '🌹 Romantic' },
+  { value: 'competitive', label: '🏆 Competitive / Game Night' },
+  { value: 'wild', label: '🔥 Wild Night Out' },
+  { value: 'classy', label: '🥂 Classy & Upscale' },
+];
+
 export default function PlanANight() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: venues, isLoading } = useVenues();
   const createPlannedNight = useCreatePlannedNight();
-  
+
   const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<string>('');
   const [startTime, setStartTime] = useState('20:00');
   const [endTime, setEndTime] = useState('22:00');
   const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
 
+  // KAN-48: New fields
+  const [partySize, setPartySize] = useState<number>(2);
+  const [preferredVibe, setPreferredVibe] = useState<string>('');
+  const [planNotes, setPlanNotes] = useState<string>('');
+
   // Full 24-hour time slots: 00:00 → 23:00
   const timeSlots = Array.from({ length: 24 }, (_, i) =>
-    `${i.toString().padStart(2, "0")}:00`
+    `${i.toString().padStart(2, '00')}:00`
   );
 
   // Midnight-crossing support: 23:00 → 01:00 is valid (2h span)
-  const startH = parseInt(startTime.split(":")[0]);
-  const endH = parseInt(endTime.split(":")[0]);
+  const startH = parseInt(startTime.split(':')[0]);
+  const endH = parseInt(endTime.split(':')[0]);
   const isTimeRangeValid =
     endH > startH || (startH >= 20 && endH <= 5 && endH !== startH);
 
   const addStop = () => {
     if (!selectedVenueId || !venues) return;
-
     const venue = venues.find(v => v.id === selectedVenueId);
     if (!venue) return;
 
@@ -82,11 +99,12 @@ export default function PlanANight() {
     setSelectedVenueId('');
 
     // Auto-advance: next start = current end, next end = +2h (wraps past midnight)
-    const curEndH = parseInt(endTime.split(":")[0]);
+    const curEndH = parseInt(endTime.split(':')[0]);
     const nextEndH = (curEndH + 2) % 24;
     setStartTime(endTime);
-    setEndTime(`${nextEndH.toString().padStart(2, "0")}:00`);
+    setEndTime(`${nextEndH.toString().padStart(2, '0')}:00`);
   };
+
   const removeStop = (id: string) => {
     setPlannedStops(plannedStops.filter(stop => stop.id !== id));
   };
@@ -123,13 +141,30 @@ export default function PlanANight() {
       return;
     }
 
+    // Validate party size
+    if (partySize < 1 || partySize > 200) {
+      toast.error('Party size must be between 1 and 200');
+      return;
+    }
+
     // Auto-generate name based on date
     const name = `Night Out - ${format(plannedDate, 'MMM d')}`;
+
+    // Build notes string with KAN-48 metadata
+    const metaLines: string[] = [];
+    if (partySize > 1) metaLines.push(`Party size: ${partySize}`);
+    if (preferredVibe) {
+      const vibeLabel = VIBE_OPTIONS.find(v => v.value === preferredVibe)?.label ?? preferredVibe;
+      metaLines.push(`Vibe: ${vibeLabel}`);
+    }
+    if (planNotes.trim()) metaLines.push(`Notes: ${planNotes.trim()}`);
+    const combinedNotes = metaLines.join(' · ');
 
     try {
       await createPlannedNight.mutateAsync({
         name,
         planned_date: format(plannedDate, 'yyyy-MM-dd'),
+        notes: combinedNotes || undefined,
         stops: plannedStops.map((stop, index) => ({
           venue_id: stop.venue.id,
           start_time: stop.startTime,
@@ -165,28 +200,28 @@ export default function PlanANight() {
             </h1>
           </div>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Create your perfect night out by adding venues in sequence. 
-            Assign time blocks and visualize your evening timeline.
+            Create your perfect night out. Set your vibe, group size, and build a
+            venue timeline — all in one place.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Add Venue Panel */}
+          {/* ── Left Panel ── */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Date Picker - Compact */}
+            {/* Date Picker */}
             <div className="space-y-2">
-              <Label className="text-foreground">Select Date for Your Night</Label>
+              <Label className="text-foreground">Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal bg-secondary border-border",
-                      !plannedDate && "text-muted-foreground"
+                      'w-full justify-start text-left font-normal bg-secondary border-border',
+                      !plannedDate && 'text-muted-foreground'
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {plannedDate ? format(plannedDate, "PPP") : "Pick a date"}
+                    {plannedDate ? format(plannedDate, 'PPP') : 'Pick a date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -194,11 +229,53 @@ export default function PlanANight() {
                     mode="single"
                     selected={plannedDate}
                     onSelect={setPlannedDate}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            {/* KAN-48 — Party Size */}
+            <div className="space-y-2">
+              <Label className="text-foreground flex items-center gap-1.5">
+                <Users className="h-4 w-4 text-primary" />
+                Party Size
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={200}
+                value={partySize}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value);
+                  if (!isNaN(v)) setPartySize(Math.max(1, Math.min(200, v)));
+                }}
+                className="bg-secondary border-border"
+                placeholder="e.g. 4"
+              />
+              <p className="text-xs text-muted-foreground">Number of people in your group</p>
+            </div>
+
+            {/* KAN-48 — Preferred Vibe */}
+            <div className="space-y-2">
+              <Label className="text-foreground flex items-center gap-1.5">
+                <Zap className="h-4 w-4 text-primary" />
+                Preferred Vibe
+                <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+              </Label>
+              <Select value={preferredVibe} onValueChange={setPreferredVibe}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Pick a vibe…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {VIBE_OPTIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Add Stop Card */}
@@ -214,11 +291,11 @@ export default function PlanANight() {
                   <Label>Select Venue</Label>
                   <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
                     <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Choose a venue..." />
+                      <SelectValue placeholder="Choose a venue…" />
                     </SelectTrigger>
                     <SelectContent>
                       {isLoading ? (
-                        <div className="py-2 px-3 text-sm text-muted-foreground">Loading...</div>
+                        <div className="py-2 px-3 text-sm text-muted-foreground">Loading…</div>
                       ) : venues && venues.length > 0 ? (
                         venues.map(venue => (
                           <SelectItem key={venue.id} value={venue.id}>
@@ -247,9 +324,7 @@ export default function PlanANight() {
                       </SelectTrigger>
                       <SelectContent>
                         {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -264,26 +339,21 @@ export default function PlanANight() {
                       </SelectTrigger>
                       <SelectContent>
                         {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
+                          <SelectItem key={time} value={time}>{time}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {!isTimeRangeValid && (
-              <p className="text-xs text-destructive">
-                Incorrect time duration
-              </p>
-            )}
+                      <p className="text-xs text-destructive">Invalid time range</p>
+                    )}
                   </div>
                 </div>
 
-                <Button 
-  className="w-full gradient-primary"
-  onClick={addStop}
-  disabled={!selectedVenueId || !isTimeRangeValid}
->
-
+                <Button
+                  className="w-full gradient-primary"
+                  onClick={addStop}
+                  disabled={!selectedVenueId || !isTimeRangeValid}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add to Plan
                 </Button>
@@ -295,7 +365,7 @@ export default function PlanANight() {
             </Card>
           </div>
 
-          {/* Timeline */}
+          {/* ── Timeline ── */}
           <div className="lg:col-span-2">
             <Card className="card-dark border-border">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -326,20 +396,20 @@ export default function PlanANight() {
                         {index < plannedStops.length - 1 && (
                           <div className="absolute left-6 top-full h-4 w-0.5 bg-border" />
                         )}
-                        
+
                         <div className="rounded-xl p-4 flex items-center gap-4 bg-secondary/50 border border-border">
                           {/* Order number */}
                           <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold">
                             {index + 1}
                           </div>
-                          
+
                           {/* Venue info */}
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-display font-semibold text-foreground">
                                 {stop.venue.name}
                               </h4>
-                              <Badge 
+                              <Badge
                                 className={`${venueTypeColorMap[stop.venue.venue_type]} text-white border-0 text-xs`}
                               >
                                 {venueTypeLabels[stop.venue.venue_type]}
@@ -380,31 +450,67 @@ export default function PlanANight() {
                       </div>
                     ))}
 
+                    {/* KAN-48 — Notes section */}
+                    <div className="mt-4 space-y-2">
+                      <Label className="text-foreground text-sm">
+                        Additional Notes
+                        <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                      </Label>
+                      <Textarea
+                        placeholder="Dietary requirements, special requests, anything the venues should know…"
+                        value={planNotes}
+                        onChange={(e) => setPlanNotes(e.target.value)}
+                        rows={3}
+                        className="resize-none bg-secondary border-border text-sm"
+                      />
+                    </div>
+
                     {/* Summary & Save */}
                     <div className="mt-6 pt-6 border-t border-border">
-                      <div className="flex items-center justify-between mb-6">
+                      {/* Stats row */}
+                      <div className="grid grid-cols-3 gap-4 mb-6">
                         <div>
-                          <p className="text-sm text-muted-foreground">Total Stops</p>
-                          <p className="font-display font-semibold text-xl">{plannedStops.length} venues</p>
+                          <p className="text-xs text-muted-foreground">Total Stops</p>
+                          <p className="font-display font-semibold text-lg">{plannedStops.length}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Duration</p>
-                          <p className="font-display font-semibold text-xl text-primary">
-                            {calculateTotalDuration()} hours
+                        <div>
+                          <p className="text-xs text-muted-foreground">Duration</p>
+                          <p className="font-display font-semibold text-lg text-primary">
+                            {calculateTotalDuration()}h
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Party</p>
+                          <p className="font-display font-semibold text-lg">
+                            {partySize} {partySize === 1 ? 'person' : 'people'}
                           </p>
                         </div>
                       </div>
-                      
-                      <Button 
+
+                      {/* Vibe badge */}
+                      {preferredVibe && (
+                        <div className="mb-4">
+                          <Badge variant="outline" className="text-xs">
+                            <Zap className="h-3 w-3 mr-1 text-primary" />
+                            {VIBE_OPTIONS.find(v => v.value === preferredVibe)?.label}
+                          </Badge>
+                        </div>
+                      )}
+
+                      <Button
                         className="w-full gradient-primary"
                         size="lg"
                         onClick={handleSavePlan}
-                        disabled={createPlannedNight.isPending || plannedStops.length === 0 || !plannedDate}
+                        disabled={
+                          createPlannedNight.isPending ||
+                          plannedStops.length === 0 ||
+                          !plannedDate
+                        }
                       >
                         {createPlannedNight.isPending ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving...
+                            Saving…
                           </>
                         ) : (
                           <>
@@ -413,10 +519,13 @@ export default function PlanANight() {
                           </>
                         )}
                       </Button>
-                      
+
                       {!user && (
                         <p className="text-xs text-center text-muted-foreground mt-3">
-                          <Link to="/auth" className="text-primary hover:underline">Sign in</Link> to save your plan
+                          <Link to="/auth" className="text-primary hover:underline">
+                            Sign in
+                          </Link>{' '}
+                          to save your plan
                         </p>
                       )}
                     </div>

@@ -8,9 +8,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import {
-  Search,
-  CalendarCheck,
-  PartyPopper,
   ShieldCheck,
   MapPin,
   Plus,
@@ -21,28 +18,10 @@ import {
   Mountain,
   ChevronRight,
   Sparkles,
+  PartyPopper,
 } from 'lucide-react';
-
-const steps = [
-  {
-    number: 1,
-    icon: Search,
-    title: 'Browse',
-    desc: 'Search venues fast and filter by what you want.',
-  },
-  {
-    number: 2,
-    icon: CalendarCheck,
-    title: 'Book',
-    desc: 'Pick a time, confirm details, and pay with QPay or card.',
-  },
-  {
-    number: 3,
-    icon: PartyPopper,
-    title: 'Go',
-    desc: 'Show your booking confirmation and enjoy your night.',
-  },
-];
+// Single source of truth shared with Index (KAN-56 / KAN-59)
+import { HOW_IT_WORKS_STEPS } from '@/lib/howItWorksSteps';
 
 const planSteps = [
   { icon: MapPin, text: 'Pick your first venue' },
@@ -138,7 +117,7 @@ export default function HowItWorks() {
             Three simple steps to your perfect night out
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {steps.map(({ number, icon: Icon, title, desc }) => (
+            {HOW_IT_WORKS_STEPS.map(({ number, icon: Icon, title, desc }) => (
               <div key={number} className="relative card-dark rounded-2xl p-6 text-center">
                 <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center text-sm font-semibold text-primary bg-background">
                   {number}

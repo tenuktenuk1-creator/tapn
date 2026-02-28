@@ -2,13 +2,13 @@ import { useState, useMemo } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useVenues } from '@/hooks/useVenues';
+import { useAdminVenues } from '@/hooks/useVenues';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Building2, 
-  Plus, 
-  Edit, 
-  Trash2, 
+  Building2,
+  Plus,
+  Edit,
+  Trash2,
   MapPin,
   Star,
   ToggleLeft,
@@ -17,7 +17,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  Eye
+  Eye,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,8 +56,8 @@ const ITEMS_PER_PAGE = 10;
 
 export default function AdminVenues() {
   const { user, isAdmin, loading } = useAuth();
-  // Admin бүх venue харах ёстой — active болон inactive хоёуланг
-  const { data: venues, isLoading, error } = useVenues({ onlyActive: false });
+  // Admin must see all venues (active + inactive) with owner info
+  const { data: venues, isLoading, error } = useAdminVenues();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -314,6 +315,7 @@ export default function AdminVenues() {
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="text-muted-foreground">Venue</TableHead>
                     <TableHead className="text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-muted-foreground">Owner</TableHead>
                     <TableHead className="text-muted-foreground">Location</TableHead>
                     <TableHead className="text-muted-foreground">Rating</TableHead>
                     <TableHead className="text-muted-foreground">Price/hr</TableHead>
@@ -346,6 +348,18 @@ export default function AdminVenues() {
                         <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
                           {venueTypeLabels[venue.venue_type]}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          {(venue as any).owner_profile?.full_name ? (
+                            <span className="text-foreground truncate max-w-[120px]" title={(venue as any).owner_profile.email ?? ''}>
+                              {(venue as any).owner_profile.full_name}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground italic">Unassigned</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground">

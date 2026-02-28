@@ -133,7 +133,15 @@ export function VenueCard({ venue }: VenueCardProps) {
   const topVibes = venue.vibe_tags?.slice(0, 3) ?? [];
 
   return (
-    <div className="card-dark rounded-2xl overflow-hidden group flex flex-col">
+    <div className="card-dark rounded-2xl overflow-hidden group flex flex-col relative">
+      {/* Full-card link layer — sits behind badges/buttons so they stay interactive */}
+      <Link
+        to={`/venues/${venue.id}`}
+        className="absolute inset-0 z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
+        aria-label={`View details for ${venue.name}`}
+        tabIndex={0}
+      />
+
       {/* Image */}
       <div className="aspect-[4/3] relative overflow-hidden flex-shrink-0">
         {venue.images && venue.images.length > 0 ? (
@@ -150,9 +158,9 @@ export function VenueCard({ venue }: VenueCardProps) {
           </div>
         )}
 
-        {/* Status Badge — top right */}
+        {/* Status Badge — top right (above the link layer) */}
         <Badge
-          className={`absolute top-3 right-3 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md`}
+          className={`absolute top-3 right-3 z-20 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md pointer-events-none`}
         >
           <span
             className={`w-2 h-2 rounded-full bg-current mr-1.5 ${isOpen || openingSoon ? 'animate-pulse' : ''}`}
@@ -160,16 +168,16 @@ export function VenueCard({ venue }: VenueCardProps) {
           {displayLabel}
         </Badge>
 
-        {/* Category Badge — bottom left */}
+        {/* Category Badge — bottom left (above the link layer) */}
         <Badge
-          className={`absolute bottom-3 left-3 ${VENUE_TYPE_COLORS[venue.venue_type] ?? 'bg-gray-500'} text-white border-0 rounded-lg text-xs`}
+          className={`absolute bottom-3 left-3 z-20 ${VENUE_TYPE_COLORS[venue.venue_type] ?? 'bg-gray-500'} text-white border-0 rounded-lg text-xs pointer-events-none`}
         >
           {venueTypeLabels[venue.venue_type]}
         </Badge>
 
-        {/* Price badge — bottom right */}
+        {/* Price badge — bottom right (above the link layer) */}
         {venue.price_per_hour ? (
-          <Badge className="absolute bottom-3 right-3 bg-black/70 text-white border-0 rounded-lg text-xs backdrop-blur-sm">
+          <Badge className="absolute bottom-3 right-3 z-20 bg-black/70 text-white border-0 rounded-lg text-xs backdrop-blur-sm pointer-events-none">
             {formatPrice(venue.price_per_hour)}
           </Badge>
         ) : null}
@@ -261,9 +269,9 @@ export function VenueCard({ venue }: VenueCardProps) {
           </div>
         )}
 
-        {/* View Details Button — pushed to bottom */}
-        <div className="mt-auto pt-2">
-          <Link to={`/venues/${venue.id}`}>
+        {/* View Details Button — pushed to bottom, raised above card-link layer */}
+        <div className="mt-auto pt-2 relative z-20">
+          <Link to={`/venues/${venue.id}`} tabIndex={-1} aria-hidden>
             <Button
               variant="outline"
               className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10"

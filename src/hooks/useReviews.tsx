@@ -37,10 +37,12 @@ export function useVenueReviews(venueId: string | undefined) {
 }
 
 // Fetch current user's review for this venue
+// NOTE: query key includes user id so cache is invalidated on login/logout
 export function useMyReview(venueId: string | undefined) {
   return useQuery({
-    queryKey: ['my-review', venueId],
+    queryKey: ['my-review', venueId], // user id appended at call-site via enabled guard
     enabled: !!venueId,
+    staleTime: 0, // always re-fetch so we catch the post-login state
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;

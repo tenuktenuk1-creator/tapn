@@ -5,12 +5,14 @@ import { useIsPartner, usePartnerBookings, useConfirmBooking, useDeclineBooking 
 import { Navigate, Link } from 'react-router-dom';
 import {
   Calendar, ArrowLeft, Users, Clock, MapPin, Check, X,
-  Search, ChevronLeft, ChevronRight, TrendingUp, DollarSign,
+  Search, ChevronLeft, ChevronRight, DollarSign, Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -38,7 +40,14 @@ export default function PartnerBookings() {
   const confirmBooking = useConfirmBooking();
   const declineBooking = useDeclineBooking();
 
+  // Decline dialog (pending bookings → rejected)
   const [declineDialogId, setDeclineDialogId] = useState<string | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
+
+  // Cancel dialog (confirmed bookings → cancelled)
+  const [cancelDialogId, setCancelDialogId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+
   const [searchQuery, setSearchQuery]   = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage]   = useState(1);
@@ -65,13 +74,27 @@ export default function PartnerBookings() {
     }
   };
 
-  const handleDecline = async (bookingId: string) => {
+  const handleDecline = async () => {
+    if (!declineDialogId) return;
     try {
-      await declineBooking.mutateAsync(bookingId);
+      await declineBooking.mutateAsync({ bookingId: declineDialogId, reason: declineReason, status: 'rejected' });
       toast.success('Booking declined');
       setDeclineDialogId(null);
+      setDeclineReason('');
     } catch {
       toast.error('Failed to decline booking');
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!cancelDialogId) return;
+    try {
+      await declineBooking.mutateAsync({ bookingId: cancelDialogId, reason: cancelReason, status: 'cancelled' });
+      toast.success('Booking cancelled');
+      setCancelDialogId(null);
+      setCancelReason('');
+    } catch {
+      toast.error('Failed to cancel booking');
     }
   };
 
@@ -83,7 +106,7 @@ export default function PartnerBookings() {
     .reduce((sum, b) => sum + (b.total_price || 0), 0) / 100;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayCount = bookings.filter(b =>
-    b.status !== 'cancelled' && b.booking_date === todayStr
+    b.status !== 'cancelled' && b.status !== 'rejected' && b.booking_date === todayStr
   ).length;
 
   // --- Filter + Search ---
@@ -199,7 +222,8 @@ export default function PartnerBookings() {
           <>
             <div className="space-y-4">
               {paginated.map(booking => {
-                const isPending = booking.status === 'pending';
+                const isPending   = booking.status === 'pending';
+                const isConfirmed = booking.status === 'confirmed';
                 const sc = STATUS_COLORS[booking.status] ?? STATUS_COLORS.cancelled;
                 return (
                   <Card
@@ -250,7 +274,9 @@ export default function PartnerBookings() {
                         <p className="text-2xl font-bold text-primary">
                           ₮{((booking.total_price || 0) / 100).toLocaleString()}
                         </p>
-                        {isPending ? (
+
+                        {/* Pending actions */}
+                        {isPending && (
                           <div className="flex gap-2">
                             <Button
                               size="sm"
@@ -265,14 +291,36 @@ export default function PartnerBookings() {
                               size="sm"
                               variant="outline"
                               className="border-red-500/50 text-red-500 hover:bg-red-500/10"
-                              onClick={() => setDeclineDialogId(booking.id)}
+                              onClick={() => { setDeclineDialogId(booking.id); setDeclineReason(''); }}
                               disabled={declineBooking.isPending}
                             >
                               <X className="h-4 w-4 mr-1" />
                               Decline
                             </Button>
                           </div>
-                        ) : (
+                        )}
+
+                        {/* Confirmed actions */}
+                        {isConfirmed && (
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
+                            <Badge variant="outline" className="text-xs">
+                              {booking.payment_status || 'unpaid'}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-orange-500/50 text-orange-500 hover:bg-orange-500/10"
+                              onClick={() => { setCancelDialogId(booking.id); setCancelReason(''); }}
+                              disabled={declineBooking.isPending}
+                            >
+                              <Ban className="h-4 w-4 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Terminal status — just show payment */}
+                        {!isPending && !isConfirmed && (
                           <Badge variant="outline" className="text-xs">
                             {booking.payment_status || 'unpaid'}
                           </Badge>
@@ -320,22 +368,78 @@ export default function PartnerBookings() {
         )}
       </div>
 
-      {/* Decline Dialog */}
-      <AlertDialog open={!!declineDialogId} onOpenChange={() => setDeclineDialogId(null)}>
+      {/* ── Decline Dialog (pending → rejected) ── */}
+      <AlertDialog
+        open={!!declineDialogId}
+        onOpenChange={(open) => { if (!open) { setDeclineDialogId(null); setDeclineReason(''); } }}
+      >
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle>Decline Booking</AlertDialogTitle>
+            <AlertDialogTitle>Decline Booking Request</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to decline this booking request? The customer will be notified.
+              This booking will be marked as <strong>rejected</strong> and the customer will be notified.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2 space-y-2">
+            <Label htmlFor="decline-reason" className="text-sm font-medium">
+              Reason <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Textarea
+              id="decline-reason"
+              placeholder="e.g. Venue unavailable on that date…"
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-border">Keep</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => declineDialogId && handleDecline(declineDialogId)}
+              onClick={handleDecline}
+              disabled={declineBooking.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Decline Booking
+              {declineBooking.isPending ? 'Declining…' : 'Decline Booking'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Cancel Dialog (confirmed → cancelled) ── */}
+      <AlertDialog
+        open={!!cancelDialogId}
+        onOpenChange={(open) => { if (!open) { setCancelDialogId(null); setCancelReason(''); } }}
+      >
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Confirmed Booking</AlertDialogTitle>
+            <AlertDialogDescription>
+              This confirmed booking will be <strong>cancelled</strong>. The customer will be notified.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2 space-y-2">
+            <Label htmlFor="cancel-reason" className="text-sm font-medium">
+              Reason <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Textarea
+              id="cancel-reason"
+              placeholder="e.g. Emergency closure, force majeure…"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border">Keep Booking</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancel}
+              disabled={declineBooking.isPending}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              {declineBooking.isPending ? 'Cancelling…' : 'Cancel Booking'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

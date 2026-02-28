@@ -100,14 +100,31 @@ export function useConfirmBooking() {
   });
 }
 
-// Partner declines a booking (pending → cancelled)
+// Partner declines (pending → rejected) or cancels (confirmed → cancelled) a booking
+// Pass status: 'rejected' for decline, 'cancelled' for cancel-confirmed
 export function useDeclineBooking() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (bookingId: string) => {
+    mutationFn: async ({
+      bookingId,
+      reason,
+      status = 'rejected',
+    }: {
+      bookingId: string;
+      reason?: string;
+      status?: 'rejected' | 'cancelled';
+    }) => {
+      const update: Record<string, unknown> = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+      // Append reason to admin_notes so it surfaces in the admin panel
+      if (reason?.trim()) {
+        update.admin_notes = `Partner reason: ${reason.trim()}`;
+      }
       const { error } = await supabase
         .from('bookings')
-        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .update(update)
         .eq('id', bookingId);
       if (error) throw error;
     },
