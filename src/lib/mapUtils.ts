@@ -259,8 +259,8 @@ export async function buildAvatarDataUrl(
 ): Promise<string> {
   const { isSelected = false, isSaved = false } = opts;
   const busyColor = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
-  const borderColor = isSelected ? '#ec4899' : busyColor;
-  const SIZE = isSelected ? 56 : 44;
+  // Larger sizes — easier to tap, better avatar recognition
+  const SIZE = isSelected ? 72 : 60;
   const CX = SIZE / 2;
   const RADIUS = CX - 2;
 
@@ -268,7 +268,7 @@ export async function buildAvatarDataUrl(
   canvas.width = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return createInitialsSvg(venue, SIZE, borderColor, isSelected, isSaved);
+  if (!ctx) return createInitialsSvg(venue, SIZE, undefined, isSelected, isSaved);
 
   // ── Draw circular avatar ──────────────────────────────────────────────────
   let hasImage = false;
@@ -277,9 +277,9 @@ export async function buildAvatarDataUrl(
       const img = await loadCrossOriginImage(venue.images[0]);
       ctx.save();
       ctx.beginPath();
-      ctx.arc(CX, CX, RADIUS - 2, 0, Math.PI * 2);
+      ctx.arc(CX, CX, RADIUS - 1.5, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(img, 2, 2, SIZE - 4, SIZE - 4);
+      ctx.drawImage(img, 1.5, 1.5, SIZE - 3, SIZE - 3);
       ctx.restore();
       hasImage = true;
     } catch {
@@ -288,35 +288,35 @@ export async function buildAvatarDataUrl(
   }
 
   if (!hasImage) {
-    drawInitialsToCanvas(ctx, venue.name, CX, CX, RADIUS - 2, '#131825', busyColor);
+    drawInitialsToCanvas(ctx, venue.name, CX, CX, RADIUS - 1.5, '#131825', busyColor);
   }
 
-  // ── Border ────────────────────────────────────────────────────────────────
+  // ── Subtle neutral outline (no colored border) ────────────────────────────
   ctx.beginPath();
   ctx.arc(CX, CX, RADIUS, 0, Math.PI * 2);
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = isSelected ? 3 : 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // ── Selected outer glow ring ──────────────────────────────────────────────
+  // ── Selected: slightly stronger neutral ring ───────────────────────────────
   if (isSelected) {
     ctx.beginPath();
-    ctx.arc(CX, CX, RADIUS + 2, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(236,72,153,0.35)';
-    ctx.lineWidth = 3;
+    ctx.arc(CX, CX, RADIUS + 2.5, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.42)';
+    ctx.lineWidth = 2.5;
     ctx.stroke();
   }
 
   // ── Saved heart badge ─────────────────────────────────────────────────────
   if (isSaved) {
-    const hx = SIZE - 10;
-    const hy = SIZE - 10;
+    const hx = SIZE - 11;
+    const hy = SIZE - 11;
     ctx.beginPath();
-    ctx.arc(hx, hy, 8, 0, Math.PI * 2);
+    ctx.arc(hx, hy, 9, 0, Math.PI * 2);
     ctx.fillStyle = '#ec4899';
     ctx.fill();
     ctx.fillStyle = 'white';
-    ctx.font = '700 9px serif';
+    ctx.font = '700 10px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('♥', hx, hy + 0.5);
@@ -326,37 +326,37 @@ export async function buildAvatarDataUrl(
     return canvas.toDataURL('image/png');
   } catch {
     // Canvas tainted (CORS issue with image)
-    return createInitialsSvg(venue, SIZE, borderColor, isSelected, isSaved);
+    return createInitialsSvg(venue, SIZE, undefined, isSelected, isSaved);
   }
 }
 
 /** Synchronous SVG fallback with initials (used before canvas is ready) */
 export function createInitialsSvg(
   venue: PublicVenue,
-  size = 44,
-  borderColor?: string,
+  size = 60,
+  _borderColor?: string,   // kept for API compatibility, ignored (using neutral outline)
   isSelected = false,
   isSaved = false,
 ): string {
   const busyColor = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
-  const bc = borderColor ?? (isSelected ? '#ec4899' : busyColor);
   const cx = size / 2;
   const r = cx - 2;
   const initial = venue.name.charAt(0).toUpperCase();
   const fs = Math.round(r * 0.72);
 
+  // Neutral outline — no colored ring
   const outerRing = isSelected
-    ? `<circle cx="${cx}" cy="${cx}" r="${r + 3}" fill="none" stroke="rgba(236,72,153,0.35)" stroke-width="3"/>`
+    ? `<circle cx="${cx}" cy="${cx}" r="${r + 3}" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="2.5"/>`
     : '';
 
   const heartBadge = isSaved
-    ? `<circle cx="${size - 10}" cy="${size - 10}" r="8" fill="#ec4899"/>
-       <text x="${size - 10}" y="${size - 9}" text-anchor="middle" fill="white" font-size="9" font-family="serif">♥</text>`
+    ? `<circle cx="${size - 11}" cy="${size - 11}" r="9" fill="#ec4899"/>
+       <text x="${size - 11}" y="${size - 10}" text-anchor="middle" fill="white" font-size="10" font-family="serif">♥</text>`
     : '';
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   ${outerRing}
-  <circle cx="${cx}" cy="${cx}" r="${r}" fill="#131825" stroke="${bc}" stroke-width="${isSelected ? 3 : 2}"/>
+  <circle cx="${cx}" cy="${cx}" r="${r}" fill="#131825" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
   <text x="${cx}" y="${cx + 1}" text-anchor="middle" dominant-baseline="central" fill="${busyColor}" font-size="${fs}" font-weight="700" font-family="Outfit,system-ui,sans-serif">${initial}</text>
   ${heartBadge}
 </svg>`;
@@ -405,7 +405,6 @@ export type AnalyticsEvent =
   | 'venue_unsaved'
   | 'compare_added'
   | 'compare_removed'
-  | 'research_area_clicked'
   | 'view_changed'
   | 'directions_clicked'
   | 'panel_venue_selected';

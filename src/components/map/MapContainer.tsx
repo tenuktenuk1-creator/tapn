@@ -29,7 +29,7 @@ import { MapCompareSheet } from './MapCompareSheet';
 import { MapLegend } from './MapLegend';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, MapPin, Search, WifiOff } from 'lucide-react';
+import { RefreshCw, MapPin, WifiOff } from 'lucide-react';
 
 // ─── Dark map style (preserved from original) ─────────────────────────────────
 
@@ -92,7 +92,6 @@ export const MapContainer = memo(function MapContainer({
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const projOverlayRef = useRef<google.maps.OverlayView | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Icon cache (venue data URL per venueId+state key) ──────────────────────
   const avatarCache = useRef<Map<string, string>>(new Map());
@@ -106,6 +105,13 @@ export const MapContainer = memo(function MapContainer({
 
   const savedIdsRef = useRef(savedIds);
   useEffect(() => { savedIdsRef.current = savedIds; }, [savedIds]);
+
+  // Mirrors selectedVenueId prop for use inside marker click closures (toggle)
+  const selectedVenueIdRef = useRef(selectedVenueId);
+  useEffect(() => { selectedVenueIdRef.current = selectedVenueId; }, [selectedVenueId]);
+
+  // Suppresses the map background click that fires right after a marker click
+  const suppressMapClickRef = useRef(false);
 
   // ── Local filter state ──────────────────────────────────────────────────────
   // openNow syncs with parent; other filters are map-only.
@@ -183,40 +189,8 @@ export const MapContainer = memo(function MapContainer({
     trackEvent('compare_removed', { venueId: id });
   }, []);
 
-  // ── Re-search area state ────────────────────────────────────────────────────
-  const lastSearchBoundsRef = useRef<google.maps.LatLngBounds | null>(null);
-  const [showResearch, setShowResearch] = useState(false);
-  const [researchLoading, setResearchLoading] = useState(false);
-  const [boundsFilteredIds, setBoundsFilteredIds] = useState<Set<string> | null>(null);
-
-  const handleResearch = useCallback(() => {
-    if (!mapRef.current) return;
-    const bounds = mapRef.current.getBounds();
-    if (!bounds) return;
-    setResearchLoading(true);
-    lastSearchBoundsRef.current = bounds;
-    setShowResearch(false);
-
-    const ids = new Set(
-      venuesRef.current
-        .filter(
-          (v) =>
-            v.latitude != null &&
-            v.longitude != null &&
-            bounds.contains({ lat: v.latitude!, lng: v.longitude! }),
-        )
-        .map((v) => v.id),
-    );
-    setBoundsFilteredIds(ids);
-    setResearchLoading(false);
-    trackEvent('research_area_clicked');
-  }, []);
-
-  // Venues filtered by re-search bounds (null = show all)
-  const venuesInView = useMemo(() => {
-    if (!boundsFilteredIds) return effectiveVenues;
-    return effectiveVenues.filter((v) => boundsFilteredIds.has(v.id));
-  }, [effectiveVenues, boundsFilteredIds]);
+  // venuesInView = effectiveVenues (re-search area feature removed)
+  const venuesInView = effectiveVenues;
 
   // ── Fullscreen state ────────────────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -230,7 +204,7 @@ export const MapContainer = memo(function MapContainer({
   }
 
   function getSyncFallbackIcon(venue: PublicVenue, isSelected: boolean, isSavedVenue: boolean): google.maps.Icon {
-    const size = isSelected ? 56 : 44;
+    const size = isSelected ? 72 : 60;
     const url = createInitialsSvg(venue, size, undefined, isSelected, isSavedVenue);
     return { url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size / 2, size / 2) };
   }
@@ -241,7 +215,7 @@ export const MapContainer = memo(function MapContainer({
     isSavedVenue: boolean,
   ): Promise<google.maps.Icon> {
     const key = iconCacheKey(venue.id, isSelected, isSavedVenue);
-    const size = isSelected ? 56 : 44;
+    const size = isSelected ? 72 : 60;
 
     if (avatarCache.current.has(key)) {
       const url = avatarCache.current.get(key)!;
@@ -293,8 +267,11 @@ export const MapContainer = memo(function MapContainer({
 
     mapRef.current = map;
 
-    // Background click → deselect
-    map.addListener('click', () => onVenueSelectRef.current(null));
+    // Background click → deselect (guarded so marker clicks don't bubble through)
+    map.addListener('click', () => {
+      if (suppressMapClickRef.current) return;
+      onVenueSelectRef.current(null);
+    });
 
     // Close preview on drag start
     map.addListener('dragstart', () => onVenueSelectRef.current(null));
@@ -308,24 +285,6 @@ export const MapContainer = memo(function MapContainer({
     };
     projOverlay.setMap(map);
     projOverlayRef.current = projOverlay;
-
-    // Track bounds for re-search
-    map.addListener('idle', () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(() => {
-        const currentBounds = map.getBounds();
-        if (!currentBounds) return;
-        if (
-          lastSearchBoundsRef.current &&
-          !lastSearchBoundsRef.current.equals(currentBounds)
-        ) {
-          setShowResearch(true);
-        }
-        if (!lastSearchBoundsRef.current) {
-          lastSearchBoundsRef.current = currentBounds;
-        }
-      }, 400);
-    });
 
     // Cluster renderer
     clustererRef.current = new MarkerClusterer({
@@ -342,10 +301,6 @@ export const MapContainer = memo(function MapContainer({
     });
 
     trackEvent('map_loaded');
-
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
   }, [isReady]);
 
   // ── Rebuild markers when venuesInView changes ──────────────────────────────
@@ -383,11 +338,24 @@ export const MapContainer = memo(function MapContainer({
         }
       });
 
-      // Click → select + show preview
-      marker.addListener('click', () => {
+      // Click → select + show preview (or toggle off if already selected)
+      marker.addListener('click', (e: google.maps.MapMouseEvent) => {
+        // Stop event so the map background click does NOT also fire,
+        // which would immediately clear the selection we're about to set.
+        e.stop();
+
+        // Brief guard so any residual map-click that slips through is ignored
+        suppressMapClickRef.current = true;
+        setTimeout(() => { suppressMapClickRef.current = false; }, 50);
+
         const current = venuesRef.current.find((v) => v.id === venue.id) ?? venue;
-        onVenueSelectRef.current(current.id);
-        trackEvent('marker_clicked', { venueId: current.id, venueName: current.name });
+        // Toggle: clicking the active marker closes the preview
+        const nextId = selectedVenueIdRef.current === current.id ? null : current.id;
+        onVenueSelectRef.current(nextId);
+
+        if (nextId) {
+          trackEvent('marker_clicked', { venueId: current.id, venueName: current.name });
+        }
       });
 
       markersRef.current.set(venue.id, marker);
@@ -574,32 +542,6 @@ export const MapContainer = memo(function MapContainer({
           onAddToCompare={addToCompare}
           onRemoveFromCompare={removeFromCompare}
         />
-      )}
-
-      {/* ── Re-search this area button ───────────────────────────────── */}
-      {showResearch && !isOffline && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 z-[6] pointer-events-auto"
-          style={{ marginTop: '80px' }}
-        >
-          <button
-            type="button"
-            onClick={handleResearch}
-            disabled={researchLoading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white shadow-xl transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-70"
-            style={{
-              background: 'rgba(8,8,20,0.92)',
-              backdropFilter: 'blur(16px)',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(168,85,247,0.25)',
-            }}
-          >
-            {researchLoading ? (
-              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Search className="h-4 w-4 text-primary" />
-            )}
-            Re-search this area
-          </button>
-        </div>
       )}
 
       {/* ── Map controls — top right ─────────────────────────────────── */}
