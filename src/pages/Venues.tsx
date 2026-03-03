@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LayoutList, Map } from 'lucide-react';
 import { Drawer } from 'vaul';
@@ -34,9 +34,11 @@ const SORT_LABELS: Record<SortOption, string> = {
   open_now: 'Open Now First',
 };
 
-// Fixed map area height — parent has a defined height; map fills it via h-full.
-// Change this one constant to resize the map area across the page.
-const MAP_AREA_HEIGHT = 'h-[640px]';
+// Map area height: at least 640 px, expands to fill most of the viewport.
+// Using CSS max() so the map feels immersive on larger screens.
+const MAP_AREA_HEIGHT_STYLE: React.CSSProperties = {
+  height: 'max(640px, calc(100vh - 280px))',
+};
 
 // ─── Sorting ─────────────────────────────────────────────────────────────────
 
@@ -275,7 +277,7 @@ export default function VenuesPage() {
            * MapContainer as a glass overlay (Feature 1). Mobile uses a Drawer.
            * Parent has a fixed pixel height; MapContainer fills it via h-full.
            */
-          <div className={`relative ${MAP_AREA_HEIGHT}`}>
+          <div className="relative" style={MAP_AREA_HEIGHT_STYLE}>
 
             {/* Map — full width; glass floating panel lives inside MapContainer */}
             <MapContainer
