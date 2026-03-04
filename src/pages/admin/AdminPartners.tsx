@@ -44,6 +44,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { venueTypeLabels } from '@/types/venue';
+import { PageTransition } from '@/components/ui/page-transition';
 
 interface PartnerVenueRow {
   id: string;
@@ -209,11 +210,13 @@ export default function AdminPartners() {
 
   if (loading) {
     return (
+      <PageTransition variant="fade">
       <Layout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
+      </PageTransition>
     );
   }
 
@@ -380,6 +383,7 @@ export default function AdminPartners() {
   }
 
   return (
+    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
         {/* Header */}
@@ -502,5 +506,6 @@ export default function AdminPartners() {
         </AlertDialogContent>
       </AlertDialog>
     </Layout>
-  );
+  
+    </PageTransition>);
 }

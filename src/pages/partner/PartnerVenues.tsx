@@ -14,6 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { venueTypeLabels } from '@/types/venue';
+import { PageTransition } from '@/components/ui/page-transition';
 
 export default function PartnerVenues() {
   const { user, loading: authLoading } = useAuth();
@@ -22,11 +23,13 @@ export default function PartnerVenues() {
 
   if (authLoading || partnerLoading) {
     return (
+      <PageTransition variant="fade">
       <Layout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
+      </PageTransition>
     );
   }
 
@@ -39,6 +42,7 @@ export default function PartnerVenues() {
   }
 
   return (
+    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
         {/* Header */}
@@ -148,5 +152,6 @@ export default function PartnerVenues() {
         )}
       </div>
     </Layout>
-  );
+  
+    </PageTransition>);
 }

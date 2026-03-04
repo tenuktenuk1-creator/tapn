@@ -27,6 +27,7 @@ import { VenueCard } from '@/components/venues/VenueCard';
 import { Skeleton } from '@/components/ui/skeleton';
 // Single source of truth for "How TAPN Works" steps (KAN-59)
 import { HOW_IT_WORKS_STEPS } from '@/lib/howItWorksSteps';
+import { PageTransition } from '@/components/ui/page-transition';
 
 const categories = [
   { type: 'karaoke', label: 'Karaoke', icon: Mic2 },
@@ -85,6 +86,7 @@ export default function Index() {
   };
 
   return (
+    <PageTransition variant="fade-scale">
     <Layout>
       {/* Hero Section */}
       <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
@@ -309,5 +311,6 @@ export default function Index() {
         </div>
       </section>
     </Layout>
-  );
+  
+    </PageTransition>);
 }

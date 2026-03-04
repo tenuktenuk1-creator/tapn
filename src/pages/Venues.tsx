@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { ArrowUpDown } from 'lucide-react';
 import { isVenueOpenNow, trackEvent } from '@/lib/mapUtils';
+import { PageTransition } from '@/components/ui/page-transition';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -190,6 +191,7 @@ export default function VenuesPage() {
 
   // ── Single Layout for both views — no shift on toggle ────────────────────
   return (
+    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
 
@@ -344,5 +346,6 @@ export default function VenuesPage() {
 
       </div>
     </Layout>
-  );
+  
+    </PageTransition>);
 }

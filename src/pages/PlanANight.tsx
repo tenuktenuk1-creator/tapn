@@ -37,7 +37,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { BottomSheetTransition } from '@/components/ui/bottom-sheet-transition';
+import { PageTransition } from '@/components/ui/page-transition';
 
 interface PlannedStop {
   id: string;
@@ -190,10 +190,8 @@ export default function PlanANight() {
   };
 
   return (
+    <PageTransition variant="rise" distance={48}>
     <Layout>
-      {/* BottomSheetTransition — scoped to Plan a Night page only.
-          Lifts all page content up from below on initial load. */}
-      <BottomSheetTransition delay={0.05} distance={48} blur backdrop>
       <div className="container py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -540,7 +538,7 @@ export default function PlanANight() {
           </div>
         </div>
       </div>
-      </BottomSheetTransition>
     </Layout>
+    </PageTransition>
   );
 }

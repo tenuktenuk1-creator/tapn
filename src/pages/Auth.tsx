@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { MapPin, Home } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 
 const authSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -79,6 +80,7 @@ export default function AuthPage() {
   };
 
   return (
+    <PageTransition variant="fade">
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-primary/5">
       {/* Home Button Header */}
       <div className="p-4">
@@ -163,5 +165,6 @@ export default function AuthPage() {
         </Card>
       </div>
     </div>
-  );
+  
+    </PageTransition>);
 }

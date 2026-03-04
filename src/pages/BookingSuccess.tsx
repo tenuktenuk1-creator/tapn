@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, ArrowRight, Calendar, Mail, MapPin, Clock, Users } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 
 interface BookingState {
   venueName?: string;
@@ -19,6 +20,7 @@ export default function BookingSuccess() {
   const state = location.state as BookingState | null;
 
   return (
+    <PageTransition variant="fade-scale">
     <Layout>
       <div className="container py-20">
         <div className="max-w-lg mx-auto text-center">
@@ -138,5 +140,6 @@ export default function BookingSuccess() {
         </div>
       </div>
     </Layout>
-  );
+  
+    </PageTransition>);
 }

@@ -5,6 +5,7 @@ import { useIsPartner, useBecomePartner } from '@/hooks/usePartner';
 import { useNavigate } from 'react-router-dom';
 import { Building2, TrendingUp, Calendar, Users, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageTransition } from '@/components/ui/page-transition';
 
 export default function PartnerLanding() {
   const { user, loading: authLoading, refreshRole } = useAuth();
@@ -61,17 +62,20 @@ export default function PartnerLanding() {
 
   if (authLoading || partnerLoading) {
     return (
+      <PageTransition variant="fade">
       <Layout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
+      </PageTransition>
     );
   }
 
   // If already a partner, show quick link to dashboard
   if (isPartner) {
     return (
+      <PageTransition variant="fade-scale">
       <Layout>
         <div className="container py-16 text-center">
           <CheckCircle className="h-16 w-16 text-primary mx-auto mb-6" />
@@ -87,10 +91,12 @@ export default function PartnerLanding() {
           </Button>
         </div>
       </Layout>
+      </PageTransition>
     );
   }
 
   return (
+    <PageTransition variant="fade-scale">
     <Layout>
       {/* Hero Section */}
       <section className="py-20 md:py-32">
@@ -197,5 +203,6 @@ export default function PartnerLanding() {
         </div>
       </section>
     </Layout>
-  );
+  
+    </PageTransition>);
 }
