@@ -37,7 +37,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { AnimatedWaveBackground } from '@/components/ui/animated-wave-background';
+import { BottomSheetTransition } from '@/components/ui/bottom-sheet-transition';
 
 interface PlannedStop {
   id: string;
@@ -191,11 +191,9 @@ export default function PlanANight() {
 
   return (
     <Layout>
-      {/* relative wrapper: anchors the absolute wave behind all page content */}
-      <div className="relative">
-        {/* Wave background — Plan a Night page only, not rendered anywhere else */}
-        <AnimatedWaveBackground variant="full" intensity="subtle" speed="slow" />
-
+      {/* BottomSheetTransition — scoped to Plan a Night page only.
+          Lifts all page content up from below on initial load. */}
+      <BottomSheetTransition delay={0.05} distance={48} blur backdrop>
       <div className="container py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -542,7 +540,7 @@ export default function PlanANight() {
           </div>
         </div>
       </div>
-      </div>{/* /relative wave wrapper */}
+      </BottomSheetTransition>
     </Layout>
   );
 }
