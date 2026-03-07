@@ -23,6 +23,8 @@ export function useVenueReviews(venueId: string | undefined) {
   return useQuery({
     queryKey: ['venue-reviews', venueId],
     enabled: !!venueId,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('venue_reviews')
@@ -30,7 +32,17 @@ export function useVenueReviews(venueId: string | undefined) {
         .eq('venue_id', venueId!)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Profiles join-д асуудал гарвал profiles-гүйгээр дахин авна
+        const { data: fallback, error: fallbackError } = await supabase
+          .from('venue_reviews')
+          .select('*')
+          .eq('venue_id', venueId!)
+          .order('created_at', { ascending: false });
+        if (fallbackError) throw fallbackError;
+        return (fallback ?? []) as VenueReview[];
+      }
+
       return (data ?? []) as VenueReview[];
     },
   });

@@ -119,21 +119,99 @@ export function useDeclineBooking() {
   });
 }
 
-export function useBecomePartner() {
+// Check current user's partner application status
+export function useMyPartnerRequest() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['my-partner-request', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('partner_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; status: 'pending' | 'approved' | 'rejected'; created_at: string } | null;
+    },
+    enabled: !!user,
+  });
+}
+
+// Apply to become a partner — creates a pending request for admin review
+export function useApplyPartner() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
       const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: user.id, role: 'partner' as const });
-      if (error && !error.message.includes('duplicate')) throw error;
+        .from('partner_requests')
+        .insert({ user_id: user.id });
+      if (error && !error.message.includes('duplicate') && !error.code?.includes('23505')) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['is-partner'] });
+      queryClient.invalidateQueries({ queryKey: ['my-partner-request'] });
     },
   });
+}
+
+// Admin: all partner applications
+export function useAdminPartnerRequests() {
+  return useQuery({
+    queryKey: ['admin-partner-requests'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partner_requests')
+        .select('id, user_id, status, created_at')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as { id: string; user_id: string; status: string; created_at: string }[];
+    },
+  });
+}
+
+// Admin: approve → assign partner role
+export function useApprovePartnerRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, userId }: { requestId: string; userId: string }) => {
+      const { error: reqErr } = await supabase
+        .from('partner_requests')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
+      if (reqErr) throw reqErr;
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: 'partner' });
+      if (roleErr && !roleErr.message.includes('duplicate') && !roleErr.code?.includes('23505')) throw roleErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
+    },
+  });
+}
+
+// Admin: reject application
+export function useRejectPartnerRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { error } = await supabase
+        .from('partner_requests')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
+    },
+  });
+}
+
+// Kept for backwards compat
+export function useBecomePartner() {
+  return useApplyPartner();
 }
 
 type CreateVenueInput = {

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, MapPin, Clock, Zap, Users } from 'lucide-react';
+import { Star, MapPin, Clock, Zap } from 'lucide-react';
 import { PublicVenue, venueTypeLabels, priceTierLabels } from '@/types/venue';
 
 interface VenueCardProps {
@@ -134,8 +134,8 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   return (
     <div className="card-dark rounded-2xl overflow-hidden group flex flex-col">
-      {/* Image */}
-      <div className="aspect-[4/3] relative overflow-hidden flex-shrink-0">
+      {/* Image — clicking navigates to detail */}
+      <Link to={`/venues/${venue.id}`} className="aspect-[4/3] relative overflow-hidden flex-shrink-0 block">
         {venue.images && venue.images.length > 0 ? (
           <img
             src={venue.images[0]}
@@ -150,15 +150,32 @@ export function VenueCard({ venue }: VenueCardProps) {
           </div>
         )}
 
-        {/* Status Badge — top right */}
+        {/* Time status badge — top right */}
         <Badge
           className={`absolute top-3 right-3 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md`}
         >
           <span
             className={`w-2 h-2 rounded-full bg-current mr-1.5 ${isOpen || openingSoon ? 'animate-pulse' : ''}`}
           />
-          {displayLabel}
+          {isOpen && !closingSoon ? 'Open Now'
+            : closingSoon ? 'Closing Soon'
+            : openingSoon ? 'Opening Soon'
+            : 'Closed'}
         </Badge>
+
+        {/* Traffic badge — top left (only when open) */}
+        {isOpen && venue.busy_status && (
+          <Badge
+            className={`absolute top-3 left-3 border-0 rounded-full text-xs font-semibold shadow-md
+              ${venue.busy_status === 'busy' ? 'bg-red-500 text-white'
+                : venue.busy_status === 'moderate' ? 'bg-yellow-500 text-black'
+                : 'bg-sky-500 text-white'}`}
+          >
+            {venue.busy_status === 'busy' ? 'Busy'
+              : venue.busy_status === 'moderate' ? 'Moderate'
+              : 'Empty'}
+          </Badge>
+        )}
 
         {/* Category Badge — bottom left */}
         <Badge
@@ -173,7 +190,7 @@ export function VenueCard({ venue }: VenueCardProps) {
             {formatPrice(venue.price_per_hour)}
           </Badge>
         ) : null}
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="p-5 flex flex-col flex-1">
@@ -212,14 +229,6 @@ export function VenueCard({ venue }: VenueCardProps) {
             <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <span className={`font-medium ${timeClassName}`}>{timeLabel}</span>
           </div>
-          {isOpen && venue.busy_status && venue.busy_status !== 'quiet' && (
-            <div className="flex items-center gap-2 text-sm">
-              <Users className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              <span className={venue.busy_status === 'busy' ? 'text-red-400' : 'text-yellow-400'}>
-                {venue.busy_status === 'busy' ? 'Very busy right now' : 'Moderately busy'}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Vibe Tags */}
