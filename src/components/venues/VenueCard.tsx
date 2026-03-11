@@ -3,13 +3,12 @@
  *
  * Motion behaviour (card content only — nav and page layout are never animated):
  *   • 3-D perspective tilt on mouse-move (spring, ≤ 5 °)
- *   • Per-venue-type glow halo that rises behind the card on hover
- *   • Venue image smoothly scales to 1.06× on hover (spring)
- *   • Venue name slides 3 px right + an animated gradient underline grows in
+ *   • Subtle per-venue-type glow halo behind the card on hover
+ *   • On hover: cover photo cross-fades to secondary/location image (images[1])
+ *   • Venue name slides 3 px right + animated gradient underline grows in
  *   • "View Details" button lifts –1 px + arrow nudges right on hover
  *
- * All hover effects intentionally require a pointer device; on touch the card
- * renders statically — no broken touch-hover state.
+ * All hover effects require a pointer device; touch renders statically.
  */
 
 import type React from 'react';
@@ -117,20 +116,16 @@ const VENUE_TYPE_COLORS: Record<string, string> = {
 };
 
 /**
- * Per-category glow colour used for the hover halo and the name underline.
- * Kept intentionally subtle so the glow reads as "live energy" not decoration.
+ * Per-category glow colour — kept at low opacity so the halo reads as ambient
+ * light rather than a heavy decoration. Blur and spread are intentionally small.
  */
 const VENUE_GLOW: Record<string, string> = {
-  cafe:         'rgba(249,115,22,0.35)',
-  karaoke:      'rgba(236,72,153,0.35)',
-  pool_snooker: 'rgba(59,130,246,0.35)',
-  lounge:       'rgba(168,85,247,0.35)',
+  cafe:         'rgba(249,115,22,0.20)',
+  karaoke:      'rgba(236,72,153,0.20)',
+  pool_snooker: 'rgba(59,130,246,0.20)',
+  lounge:       'rgba(168,85,247,0.20)',
 };
 
-/**
- * Underline gradient per category — slightly more opaque than the glow so it
- * reads as a deliberate accent, not ambient light.
- */
 const VENUE_UNDERLINE: Record<string, string> = {
   cafe:         'rgba(249,115,22,0.9)',
   karaoke:      'rgba(236,72,153,0.9)',
@@ -171,8 +166,12 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   const topVibes     = venue.vibe_tags?.slice(0, 3)  ?? [];
   const topAmenities = venue.amenities?.slice(0, 3)  ?? [];
-  const glowColor      = VENUE_GLOW[venue.venue_type]      ?? 'rgba(168,85,247,0.35)';
+  const glowColor      = VENUE_GLOW[venue.venue_type]      ?? 'rgba(168,85,247,0.20)';
   const underlineColor = VENUE_UNDERLINE[venue.venue_type] ?? 'rgba(168,85,247,0.9)';
+
+  // images[0] = cover photo, images[1] = location / secondary image
+  const coverImage    = venue.images?.[0] ?? null;
+  const locationImage = venue.images?.[1] ?? null;
 
   // ── Mouse-tracking tilt ──────────────────────────────────────────────────
 
@@ -206,39 +205,46 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   return (
     /*
-     * Outer wrapper — sets up perspective and receives mouse events.
-     * Must NOT have overflow:hidden so the glow halo is visible outside
-     * the card boundary.
+     * h-full ensures the card fills the full grid cell height so all cards in
+     * a row are the same height regardless of their content length.
+     * No overflow:hidden here — the glow halo must bleed outside.
      */
     <div
       ref={containerRef}
-      className="relative"
+      className="relative h-full"
       style={{ perspective: '1200px' }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={handleMouseLeave}
     >
-      {/* ── Glow halo ── sits behind the card, blurred, outside overflow:hidden */}
+      {/*
+       * Glow halo — sits behind the card.
+       * Small spread (-inset-1), low blur (14 px), low-opacity colour, capped
+       * animated opacity at 0.65 to stay premium rather than overpowering.
+       */}
       <motion.div
         aria-hidden
-        className="absolute -inset-2 rounded-[20px] pointer-events-none"
-        style={{ filter: 'blur(22px)', zIndex: 0 }}
-        animate={{ opacity: isHovered ? 1 : 0 }}
+        className="absolute -inset-1 rounded-[20px] pointer-events-none"
+        style={{ filter: 'blur(14px)', zIndex: 0 }}
+        animate={{ opacity: isHovered ? 0.65 : 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
       >
         <div className="absolute inset-0 rounded-[20px]" style={{ background: glowColor }} />
       </motion.div>
 
-      {/* ── Card surface ── 3-D tilt wrapper */}
+      {/*
+       * Card surface — h-full so it stretches to fill the outer wrapper,
+       * which in turn fills the grid cell. Content distributes with flex.
+       */}
       <motion.div
-        className="card-dark rounded-2xl overflow-hidden flex flex-col relative"
+        className="card-dark rounded-2xl overflow-hidden flex flex-col h-full relative"
         style={{
           rotateX: springRotateX,
           rotateY: springRotateY,
           zIndex: 1,
         }}
       >
-        {/* Full-card link layer — behind badges/buttons at z-10 */}
+        {/* Full-card link layer */}
         <Link
           to={`/venues/${venue.id}`}
           className="absolute inset-0 z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
@@ -246,25 +252,51 @@ export function VenueCard({ venue }: VenueCardProps) {
           tabIndex={0}
         />
 
-        {/* ── Image ── */}
+        {/* ── Image area ── */}
         <div className="aspect-[4/3] relative overflow-hidden flex-shrink-0">
-          {venue.images && venue.images.length > 0 ? (
-            <motion.img
-              src={venue.images[0]}
-              alt={venue.name}
-              className="w-full h-full object-cover"
-              animate={{ scale: isHovered ? 1.06 : 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 26 }}
-            />
+
+          {coverImage ? (
+            <>
+              {/*
+               * Cover photo — fades toward transparent when a location image
+               * is available and the card is hovered. Falls back to static
+               * display (with gentle scale) when no secondary image exists.
+               */}
+              <motion.img
+                src={coverImage}
+                alt={venue.name}
+                className="absolute inset-0 w-full h-full object-cover"
+                animate={{
+                  opacity: isHovered && locationImage ? 0.12 : 1,
+                  scale:   isHovered && !locationImage ? 1.05 : 1,
+                }}
+                transition={{ duration: 0.45, ease: 'easeOut' }}
+              />
+
+              {/*
+               * Location / secondary image — cross-fades in on hover.
+               * object-cover fills the container at a natural zoom level.
+               * Only rendered when images[1] exists.
+               */}
+              {locationImage && (
+                <motion.img
+                  src={locationImage}
+                  alt={`${venue.name} — interior`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  animate={{ opacity: isHovered ? 1 : 0 }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                />
+              )}
+            </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
               <span className="text-4xl font-display font-bold text-muted-foreground/30">
                 {venue.name.charAt(0)}
               </span>
             </div>
           )}
 
-          {/* Subtle dark vignette that intensifies on hover — makes badges pop */}
+          {/* Dark vignette — helps badges pop */}
           <motion.div
             aria-hidden
             className="absolute inset-0 bg-black pointer-events-none"
@@ -272,7 +304,7 @@ export function VenueCard({ venue }: VenueCardProps) {
             transition={{ duration: 0.3 }}
           />
 
-          {/* Status badge — top-right, above link layer */}
+          {/* Status badge — top-right */}
           <Badge
             className={`absolute top-3 right-3 z-20 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md pointer-events-none`}
           >
@@ -300,7 +332,7 @@ export function VenueCard({ venue }: VenueCardProps) {
         {/* ── Content ── */}
         <div className="p-5 flex flex-col flex-1">
 
-          {/* Venue name: spring-slides 3 px right + gradient underline grows in */}
+          {/* Venue name + animated underline */}
           <div className="mb-1">
             <motion.h3
               className="font-display font-semibold text-lg text-foreground line-clamp-1"
@@ -309,7 +341,6 @@ export function VenueCard({ venue }: VenueCardProps) {
             >
               {venue.name}
             </motion.h3>
-            {/* Underline — grows left → right from 0 on mount */}
             <motion.div
               aria-hidden
               className="h-px mt-0.5"
@@ -401,7 +432,7 @@ export function VenueCard({ venue }: VenueCardProps) {
             </div>
           )}
 
-          {/* View Details — lifts up on hover, arrow nudges right */}
+          {/* View Details — anchored to bottom via mt-auto */}
           <div className="mt-auto pt-2 relative z-20">
             <Link to={`/venues/${venue.id}`} tabIndex={-1} aria-hidden>
               <motion.div
