@@ -3,6 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Venue } from '@/types/venue';
 
+type PartnerRequestRecord = {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  updated_at?: string | null;
+};
+
 export function useIsPartner() {
   const { user } = useAuth();
   
@@ -128,11 +135,12 @@ export function useMyPartnerRequest() {
       if (!user) return null;
       const { data, error } = await supabase
         .from('partner_requests')
-        .select('*')
+        .select('id, status, created_at, updated_at')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data as { id: string; status: 'pending' | 'approved' | 'rejected'; created_at: string } | null;
+      return (data?.[0] ?? null) as PartnerRequestRecord | null;
     },
     enabled: !!user,
   });
@@ -145,13 +153,49 @@ export function useApplyPartner() {
   return useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
+      const { data: existingRequests, error: fetchError } = await supabase
         .from('partner_requests')
-        .insert({ user_id: user.id });
-      if (error && !error.message.includes('duplicate') && !error.code?.includes('23505')) throw error;
+        .select('id, status, created_at, updated_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (fetchError) throw fetchError;
+
+      const existingRequest = (existingRequests?.[0] ?? null) as PartnerRequestRecord | null;
+
+      if (existingRequest?.status === 'pending') {
+        return existingRequest;
+      }
+
+      if (existingRequest?.status === 'rejected') {
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('partner_requests')
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', existingRequest.id)
+          .select('id, status, created_at, updated_at')
+          .single();
+        if (updateError) throw updateError;
+        return updatedRequest as PartnerRequestRecord;
+      }
+
+      if (existingRequest?.status === 'approved') {
+        return existingRequest;
+      }
+
+      const { data: insertedRequest, error: insertError } = await supabase
+        .from('partner_requests')
+        .insert({ user_id: user.id, status: 'pending' })
+        .select('id, status, created_at, updated_at')
+        .single();
+      if (insertError) throw insertError;
+      return insertedRequest as PartnerRequestRecord;
     },
-    onSuccess: () => {
+    onSuccess: (request) => {
+      if (user && request) {
+        queryClient.setQueryData(['my-partner-request', user.id], request);
+      }
       queryClient.invalidateQueries({ queryKey: ['my-partner-request'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
     },
   });
 }
