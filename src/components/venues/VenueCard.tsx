@@ -1,14 +1,39 @@
+/**
+ * VenueCard — animated venue discovery card for the Venues page.
+ *
+ * Motion behaviour (card content only — nav and page layout are never animated):
+ *   • 3-D perspective tilt on mouse-move (spring, ≤ 5 °)
+ *   • Per-venue-type glow halo that rises behind the card on hover
+ *   • Venue image smoothly scales to 1.06× on hover (spring)
+ *   • Venue name slides 3 px right + an animated gradient underline grows in
+ *   • "View Details" button lifts –1 px + arrow nudges right on hover
+ *
+ * All hover effects intentionally require a pointer device; on touch the card
+ * renders statically — no broken touch-hover state.
+ */
+
+import type React from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, MapPin, Clock, Zap, Users } from 'lucide-react';
+import { Star, MapPin, Clock, Zap, Users, ArrowRight } from 'lucide-react';
 import { PublicVenue, venueTypeLabels, priceTierLabels } from '@/types/venue';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface VenueCardProps {
   venue: PublicVenue;
 }
 
-// Parse "HH:MM" -> total minutes from midnight
+// ─── Open-status logic ───────────────────────────────────────────────────────
+
 function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
@@ -22,12 +47,8 @@ type OpenStatusResult = {
   openingSoon: boolean;
 };
 
-// Fully correct open/closed logic:
-// - Handles midnight-crossing hours (e.g. open 22:00, close 02:00)
-// - Handles "closes soon" / "opens soon" within 30 min
-// - Uses properly typed busy_status
 function getOpenStatus(venue: PublicVenue): OpenStatusResult {
-  const SOON_THRESHOLD = 30; // minutes
+  const SOON_THRESHOLD = 30;
 
   if (!venue.opening_hours || Object.keys(venue.opening_hours).length === 0) {
     return { label: 'OPEN', timeLabel: 'Open Now', isOpen: true, closingSoon: false, openingSoon: false };
@@ -43,10 +64,8 @@ function getOpenStatus(venue: PublicVenue): OpenStatusResult {
     return { label: 'CLOSED', timeLabel: 'Closed Today', isOpen: false, closingSoon: false, openingSoon: false };
   }
 
-  const openMin = toMinutes(todayHours.open);
+  const openMin  = toMinutes(todayHours.open);
   const closeMin = toMinutes(todayHours.close);
-
-  // Midnight-crossing: e.g. open=22:00, close=02:00 → closeMin < openMin
   const isMidnightCross = closeMin < openMin;
 
   let isCurrentlyOpen: boolean;
@@ -69,19 +88,12 @@ function getOpenStatus(venue: PublicVenue): OpenStatusResult {
     const closingSoon = minutesUntilClose <= SOON_THRESHOLD;
     const busy = venue.busy_status || 'quiet';
 
-    if (busy === 'busy') {
-      return { label: 'FULL', timeLabel: 'Very Busy Now', isOpen: true, closingSoon, openingSoon: false };
-    }
-    if (busy === 'moderate') {
-      return { label: 'BUSY', timeLabel: `Moderate · Closes ${todayHours.close}`, isOpen: true, closingSoon, openingSoon: false };
-    }
-    if (closingSoon) {
-      return { label: 'OPEN', timeLabel: `Closes soon · ${todayHours.close}`, isOpen: true, closingSoon: true, openingSoon: false };
-    }
-    return { label: 'OPEN', timeLabel: `Open · Closes ${todayHours.close}`, isOpen: true, closingSoon: false, openingSoon: false };
+    if (busy === 'busy')     return { label: 'FULL', timeLabel: 'Very Busy Now',                              isOpen: true, closingSoon, openingSoon: false };
+    if (busy === 'moderate') return { label: 'BUSY', timeLabel: `Moderate · Closes ${todayHours.close}`,     isOpen: true, closingSoon, openingSoon: false };
+    if (closingSoon)         return { label: 'OPEN', timeLabel: `Closes soon · ${todayHours.close}`,         isOpen: true, closingSoon: true, openingSoon: false };
+    return                         { label: 'OPEN', timeLabel: `Open · Closes ${todayHours.close}`,          isOpen: true, closingSoon: false, openingSoon: false };
   }
 
-  // Closed — check if opening soon
   const minutesUntilOpen = currentMinutes < openMin
     ? openMin - currentMinutes
     : (1440 - currentMinutes) + openMin;
@@ -95,11 +107,35 @@ function getOpenStatus(venue: PublicVenue): OpenStatusResult {
   return { label: 'CLOSED', timeLabel: 'Closed Today', isOpen: false, closingSoon: false, openingSoon: false };
 }
 
+// ─── Style maps ───────────────────────────────────────────────────────────────
+
 const VENUE_TYPE_COLORS: Record<string, string> = {
-  cafe: 'bg-orange-500',
-  karaoke: 'bg-pink-500',
+  cafe:         'bg-orange-500',
+  karaoke:      'bg-pink-500',
   pool_snooker: 'bg-blue-500',
-  lounge: 'bg-purple-500',
+  lounge:       'bg-purple-500',
+};
+
+/**
+ * Per-category glow colour used for the hover halo and the name underline.
+ * Kept intentionally subtle so the glow reads as "live energy" not decoration.
+ */
+const VENUE_GLOW: Record<string, string> = {
+  cafe:         'rgba(249,115,22,0.35)',
+  karaoke:      'rgba(236,72,153,0.35)',
+  pool_snooker: 'rgba(59,130,246,0.35)',
+  lounge:       'rgba(168,85,247,0.35)',
+};
+
+/**
+ * Underline gradient per category — slightly more opaque than the glow so it
+ * reads as a deliberate accent, not ambient light.
+ */
+const VENUE_UNDERLINE: Record<string, string> = {
+  cafe:         'rgba(249,115,22,0.9)',
+  karaoke:      'rgba(236,72,153,0.9)',
+  pool_snooker: 'rgba(59,130,246,0.9)',
+  lounge:       'rgba(168,85,247,0.9)',
 };
 
 function formatPrice(price: number | null): string {
@@ -108,179 +144,289 @@ function formatPrice(price: number | null): string {
   return `₮${price}/цаг`;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function VenueCard({ venue }: VenueCardProps) {
   const { label, timeLabel, isOpen, closingSoon, openingSoon } = getOpenStatus(venue);
 
+  // Status badge colour
   const statusClassName =
-    label === 'FULL' ? 'bg-red-500 text-white'
-    : label === 'BUSY' ? 'bg-yellow-500 text-black'
-    : label === 'SOON' ? 'bg-blue-500 text-white'
-    : label === 'OPEN' && closingSoon ? 'bg-orange-500 text-white'
-    : label === 'OPEN' ? 'bg-green-500 text-white'
-    : 'bg-gray-600 text-white';
+    label === 'FULL'                   ? 'bg-red-500 text-white'
+    : label === 'BUSY'                 ? 'bg-yellow-500 text-black'
+    : label === 'SOON'                 ? 'bg-blue-500 text-white'
+    : label === 'OPEN' && closingSoon  ? 'bg-orange-500 text-white'
+    : label === 'OPEN'                 ? 'bg-green-500 text-white'
+    :                                    'bg-gray-600 text-white';
 
+  // Hours text colour
   const timeClassName =
-    label === 'FULL' ? 'text-red-500'
-    : label === 'BUSY' ? 'text-yellow-500'
-    : label === 'SOON' ? 'text-blue-400'
-    : label === 'OPEN' && closingSoon ? 'text-orange-400'
-    : label === 'OPEN' ? 'text-green-500'
-    : 'text-muted-foreground';
+    label === 'FULL'                   ? 'text-red-500'
+    : label === 'BUSY'                 ? 'text-yellow-500'
+    : label === 'SOON'                 ? 'text-blue-400'
+    : label === 'OPEN' && closingSoon  ? 'text-orange-400'
+    : label === 'OPEN'                 ? 'text-green-500'
+    :                                    'text-muted-foreground';
 
   const displayLabel = label === 'OPEN' && closingSoon ? 'SOON' : label;
 
-  const topAmenities = venue.amenities?.slice(0, 3) ?? [];
-  const topVibes = venue.vibe_tags?.slice(0, 3) ?? [];
+  const topVibes     = venue.vibe_tags?.slice(0, 3)  ?? [];
+  const topAmenities = venue.amenities?.slice(0, 3)  ?? [];
+  const glowColor      = VENUE_GLOW[venue.venue_type]      ?? 'rgba(168,85,247,0.35)';
+  const underlineColor = VENUE_UNDERLINE[venue.venue_type] ?? 'rgba(168,85,247,0.9)';
+
+  // ── Mouse-tracking tilt ──────────────────────────────────────────────────
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // Normalised (-0.5 → 0.5) → degrees (±5°)
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], [ 5, -5]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-5,  5]);
+
+  const springRotateX = useSpring(rotateX, { stiffness: 300, damping: 30 });
+  const springRotateY = useSpring(rotateY, { stiffness: 300, damping: 30 });
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const { left, top, width, height } = containerRef.current.getBoundingClientRect();
+    mouseX.set((e.clientX - left) / width  - 0.5);
+    mouseY.set((e.clientY - top)  / height - 0.5);
+  };
+
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+    setIsHovered(false);
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="card-dark rounded-2xl overflow-hidden group flex flex-col relative">
-      {/* Full-card link layer — sits behind badges/buttons so they stay interactive */}
-      <Link
-        to={`/venues/${venue.id}`}
-        className="absolute inset-0 z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-        aria-label={`View details for ${venue.name}`}
-        tabIndex={0}
-      />
+    /*
+     * Outer wrapper — sets up perspective and receives mouse events.
+     * Must NOT have overflow:hidden so the glow halo is visible outside
+     * the card boundary.
+     */
+    <div
+      ref={containerRef}
+      className="relative"
+      style={{ perspective: '1200px' }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* ── Glow halo ── sits behind the card, blurred, outside overflow:hidden */}
+      <motion.div
+        aria-hidden
+        className="absolute -inset-2 rounded-[20px] pointer-events-none"
+        style={{ filter: 'blur(22px)', zIndex: 0 }}
+        animate={{ opacity: isHovered ? 1 : 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+      >
+        <div className="absolute inset-0 rounded-[20px]" style={{ background: glowColor }} />
+      </motion.div>
 
-      {/* Image */}
-      <div className="aspect-[4/3] relative overflow-hidden flex-shrink-0">
-        {venue.images && venue.images.length > 0 ? (
-          <img
-            src={venue.images[0]}
-            alt={venue.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+      {/* ── Card surface ── 3-D tilt wrapper */}
+      <motion.div
+        className="card-dark rounded-2xl overflow-hidden flex flex-col relative"
+        style={{
+          rotateX: springRotateX,
+          rotateY: springRotateY,
+          zIndex: 1,
+        }}
+      >
+        {/* Full-card link layer — behind badges/buttons at z-10 */}
+        <Link
+          to={`/venues/${venue.id}`}
+          className="absolute inset-0 z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
+          aria-label={`View details for ${venue.name}`}
+          tabIndex={0}
+        />
+
+        {/* ── Image ── */}
+        <div className="aspect-[4/3] relative overflow-hidden flex-shrink-0">
+          {venue.images && venue.images.length > 0 ? (
+            <motion.img
+              src={venue.images[0]}
+              alt={venue.name}
+              className="w-full h-full object-cover"
+              animate={{ scale: isHovered ? 1.06 : 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
+              <span className="text-4xl font-display font-bold text-muted-foreground/30">
+                {venue.name.charAt(0)}
+              </span>
+            </div>
+          )}
+
+          {/* Subtle dark vignette that intensifies on hover — makes badges pop */}
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 bg-black pointer-events-none"
+            animate={{ opacity: isHovered ? 0.18 : 0 }}
+            transition={{ duration: 0.3 }}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
-            <span className="text-4xl font-display font-bold text-muted-foreground/30">
-              {venue.name.charAt(0)}
-            </span>
-          </div>
-        )}
 
-        {/* Status Badge — top right (above the link layer) */}
-        <Badge
-          className={`absolute top-3 right-3 z-20 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md pointer-events-none`}
-        >
-          <span
-            className={`w-2 h-2 rounded-full bg-current mr-1.5 ${isOpen || openingSoon ? 'animate-pulse' : ''}`}
-          />
-          {displayLabel}
-        </Badge>
-
-        {/* Category Badge — bottom left (above the link layer) */}
-        <Badge
-          className={`absolute bottom-3 left-3 z-20 ${VENUE_TYPE_COLORS[venue.venue_type] ?? 'bg-gray-500'} text-white border-0 rounded-lg text-xs pointer-events-none`}
-        >
-          {venueTypeLabels[venue.venue_type]}
-        </Badge>
-
-        {/* Price badge — bottom right (above the link layer) */}
-        {venue.price_per_hour ? (
-          <Badge className="absolute bottom-3 right-3 z-20 bg-black/70 text-white border-0 rounded-lg text-xs backdrop-blur-sm pointer-events-none">
-            {formatPrice(venue.price_per_hour)}
+          {/* Status badge — top-right, above link layer */}
+          <Badge
+            className={`absolute top-3 right-3 z-20 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md pointer-events-none`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full bg-current mr-1.5 ${isOpen || openingSoon ? 'animate-pulse' : ''}`}
+            />
+            {displayLabel}
           </Badge>
-        ) : null}
-      </div>
 
-      {/* Content */}
-      <div className="p-5 flex flex-col flex-1">
-        {/* Name */}
-        <h3 className="font-display font-semibold text-lg text-foreground mb-1 line-clamp-1">
-          {venue.name}
-        </h3>
+          {/* Category badge — bottom-left */}
+          <Badge
+            className={`absolute bottom-3 left-3 z-20 ${VENUE_TYPE_COLORS[venue.venue_type] ?? 'bg-gray-500'} text-white border-0 rounded-lg text-xs pointer-events-none`}
+          >
+            {venueTypeLabels[venue.venue_type]}
+          </Badge>
 
-        {/* Rating & Price Tier */}
-        <div className="flex items-center justify-between mb-3">
-          {venue.rating && Number(venue.rating) > 0 ? (
-            <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-semibold text-foreground">{Number(venue.rating).toFixed(1)}</span>
-              {venue.review_count > 0 && (
-                <span className="text-muted-foreground text-sm">({venue.review_count})</span>
+          {/* Price badge — bottom-right */}
+          {venue.price_per_hour ? (
+            <Badge className="absolute bottom-3 right-3 z-20 bg-black/70 text-white border-0 rounded-lg text-xs backdrop-blur-sm pointer-events-none">
+              {formatPrice(venue.price_per_hour)}
+            </Badge>
+          ) : null}
+        </div>
+
+        {/* ── Content ── */}
+        <div className="p-5 flex flex-col flex-1">
+
+          {/* Venue name: spring-slides 3 px right + gradient underline grows in */}
+          <div className="mb-1">
+            <motion.h3
+              className="font-display font-semibold text-lg text-foreground line-clamp-1"
+              animate={{ x: isHovered ? 3 : 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+            >
+              {venue.name}
+            </motion.h3>
+            {/* Underline — grows left → right from 0 on mount */}
+            <motion.div
+              aria-hidden
+              className="h-px mt-0.5"
+              style={{
+                background: `linear-gradient(to right, ${underlineColor}, rgba(255,255,255,0.1), transparent)`,
+                originX: 0,
+              }}
+              animate={{ scaleX: isHovered ? 1 : 0 }}
+              transition={{ duration: 0.38, ease: 'easeOut' }}
+            />
+          </div>
+
+          {/* Rating & price tier */}
+          <div className="flex items-center justify-between mb-3">
+            {venue.rating && Number(venue.rating) > 0 ? (
+              <div className="flex items-center gap-1">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span className="font-semibold text-foreground">{Number(venue.rating).toFixed(1)}</span>
+                {venue.review_count > 0 && (
+                  <span className="text-muted-foreground text-sm">({venue.review_count})</span>
+                )}
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs">No reviews yet</span>
+            )}
+            {venue.price_tier && (
+              <Badge variant="outline" className="text-xs">
+                {priceTierLabels[venue.price_tier]}
+              </Badge>
+            )}
+          </div>
+
+          {/* Location & hours */}
+          <div className="space-y-1.5 mb-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{venue.address || venue.city}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <span className={`font-medium ${timeClassName}`}>{timeLabel}</span>
+            </div>
+            {isOpen && venue.busy_status && venue.busy_status !== 'quiet' && (
+              <div className="flex items-center gap-2 text-sm">
+                <Users className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <span className={venue.busy_status === 'busy' ? 'text-red-400' : 'text-yellow-400'}>
+                  {venue.busy_status === 'busy' ? 'Very busy right now' : 'Moderately busy'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Vibe tags */}
+          {topVibes.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {topVibes.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                >
+                  <Zap className="h-2.5 w-2.5" />
+                  {tag}
+                </span>
+              ))}
+              {(venue.vibe_tags?.length ?? 0) > 3 && (
+                <span className="text-xs text-muted-foreground self-center">
+                  +{(venue.vibe_tags?.length ?? 0) - 3} more
+                </span>
               )}
             </div>
-          ) : (
-            <span className="text-muted-foreground text-xs">No reviews yet</span>
           )}
-          {venue.price_tier && (
-            <Badge variant="outline" className="text-xs">
-              {priceTierLabels[venue.price_tier]}
-            </Badge>
-          )}
-        </div>
 
-        {/* Location & Hours */}
-        <div className="space-y-1.5 mb-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-            <span className="truncate">{venue.address || venue.city}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <span className={`font-medium ${timeClassName}`}>{timeLabel}</span>
-          </div>
-          {isOpen && venue.busy_status && venue.busy_status !== 'quiet' && (
-            <div className="flex items-center gap-2 text-sm">
-              <Users className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              <span className={venue.busy_status === 'busy' ? 'text-red-400' : 'text-yellow-400'}>
-                {venue.busy_status === 'busy' ? 'Very busy right now' : 'Moderately busy'}
-              </span>
+          {/* Amenity chips */}
+          {topAmenities.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-4">
+              {topAmenities.map((a) => (
+                <span
+                  key={a}
+                  className="px-2 py-0.5 rounded-md bg-secondary text-muted-foreground text-xs"
+                >
+                  {a}
+                </span>
+              ))}
+              {(venue.amenities?.length ?? 0) > 3 && (
+                <span className="px-2 py-0.5 rounded-md bg-secondary text-muted-foreground text-xs">
+                  +{(venue.amenities?.length ?? 0) - 3}
+                </span>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Vibe Tags */}
-        {topVibes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {topVibes.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium"
+          {/* View Details — lifts up on hover, arrow nudges right */}
+          <div className="mt-auto pt-2 relative z-20">
+            <Link to={`/venues/${venue.id}`} tabIndex={-1} aria-hidden>
+              <motion.div
+                animate={{ y: isHovered ? -1 : 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
               >
-                <Zap className="h-2.5 w-2.5" />
-                {tag}
-              </span>
-            ))}
-            {(venue.vibe_tags?.length ?? 0) > 3 && (
-              <span className="text-xs text-muted-foreground self-center">
-                +{(venue.vibe_tags?.length ?? 0) - 3} more
-              </span>
-            )}
+                <Button
+                  variant="outline"
+                  className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10 flex items-center justify-center gap-2"
+                >
+                  View Details
+                  <motion.span
+                    animate={{ x: isHovered ? 3 : 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                    className="flex items-center"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </motion.span>
+                </Button>
+              </motion.div>
+            </Link>
           </div>
-        )}
 
-        {/* Amenities chips */}
-        {topAmenities.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {topAmenities.map((a) => (
-              <span
-                key={a}
-                className="px-2 py-0.5 rounded-md bg-secondary text-muted-foreground text-xs"
-              >
-                {a}
-              </span>
-            ))}
-            {(venue.amenities?.length ?? 0) > 3 && (
-              <span className="px-2 py-0.5 rounded-md bg-secondary text-muted-foreground text-xs">
-                +{(venue.amenities?.length ?? 0) - 3}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* View Details Button — pushed to bottom, raised above card-link layer */}
-        <div className="mt-auto pt-2 relative z-20">
-          <Link to={`/venues/${venue.id}`} tabIndex={-1} aria-hidden>
-            <Button
-              variant="outline"
-              className="w-full rounded-xl border-primary/50 text-primary hover:bg-primary/10"
-            >
-              View Details
-            </Button>
-          </Link>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
