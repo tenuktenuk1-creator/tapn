@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 // Single source of truth shared with Index (KAN-56 / KAN-59)
 import { HOW_IT_WORKS_STEPS } from '@/lib/howItWorksSteps';
-import { PageTransition } from '@/components/ui/page-transition';
 
 const planSteps = [
   { icon: MapPin, text: 'Pick your first venue' },
@@ -82,7 +81,6 @@ const faqItems = [
 
 export default function HowItWorks() {
   return (
-    <PageTransition variant="fade-scale">
     <Layout>
       {/* Hero Section */}
       <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden">
@@ -304,7 +302,5 @@ export default function HowItWorks() {
           </div>
         </div>
       </section>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }

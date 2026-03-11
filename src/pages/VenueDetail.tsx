@@ -5,7 +5,6 @@ import { ReviewSection } from '@/components/venues/ReviewSection';
 import { BookingForm } from '@/components/booking/BookingForm';
 import { useVenue } from '@/hooks/useVenues';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PageTransition } from '@/components/ui/page-transition';
 
 export default function VenueDetailPage() {
   const { id } = useParams();
@@ -13,7 +12,6 @@ export default function VenueDetailPage() {
 
   if (isLoading) {
     return (
-      <PageTransition variant="rise">
       <Layout>
         <div className="container py-8 space-y-6">
           <Skeleton className="h-[400px] rounded-2xl" />
@@ -22,25 +20,21 @@ export default function VenueDetailPage() {
           <Skeleton className="h-40 rounded-xl" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
   if (!venue) {
     return (
-      <PageTransition variant="rise">
       <Layout>
         <div className="container py-20 text-center">
           <h1 className="font-display text-2xl font-bold mb-2">Venue Not Found</h1>
           <p className="text-muted-foreground">The venue you're looking for doesn't exist.</p>
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
   return (
-    <PageTransition variant="rise">
     <Layout>
       <div className="container py-8">
         <div className="grid lg:grid-cols-3 gap-8">
@@ -58,7 +52,5 @@ export default function VenueDetailPage() {
           </div>
         </div>
       </div>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }

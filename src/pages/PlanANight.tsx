@@ -190,8 +190,8 @@ export default function PlanANight() {
   };
 
   return (
-    <PageTransition variant="rise" distance={48}>
     <Layout>
+      <PageTransition variant="rise" distance={48}>
       <div className="container py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -538,7 +538,7 @@ export default function PlanANight() {
           </div>
         </div>
       </div>
+      </PageTransition>
     </Layout>
-    </PageTransition>
   );
 }

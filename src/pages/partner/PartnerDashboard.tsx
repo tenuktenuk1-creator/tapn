@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { PageTransition } from '@/components/ui/page-transition';
 
 export default function PartnerDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -17,13 +16,11 @@ export default function PartnerDashboard() {
 
   if (authLoading || partnerLoading) {
     return (
-      <PageTransition variant="fade">
       <Layout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
@@ -43,7 +40,6 @@ export default function PartnerDashboard() {
   const confirmedBookings = bookings?.filter(b => b.status === 'approved').length || 0;
 
   return (
-    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
         {/* Header */}
@@ -215,7 +211,5 @@ export default function PartnerDashboard() {
           </div>
         </div>
       </div>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }

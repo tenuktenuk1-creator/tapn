@@ -18,7 +18,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navigate } from 'react-router-dom';
-import { PageTransition } from '@/components/ui/page-transition';
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading } = useAuth();
@@ -37,16 +36,13 @@ export default function AdminDashboard() {
     },
   });
 
-
   if (loading) {
     return (
-      <PageTransition variant="fade">
       <Layout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
@@ -103,7 +99,6 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
         <div className="mb-8">
@@ -212,7 +207,5 @@ export default function AdminDashboard() {
           </Card>
         </div>
       </div>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }

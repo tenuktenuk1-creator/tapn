@@ -33,7 +33,6 @@ import { z } from 'zod';
 import { format, isAfter, isBefore } from 'date-fns';
 import { PlannedNightsSection } from '@/components/profile/PlannedNightsSection';
 import { venueTypeLabels } from '@/types/venue';
-import { PageTransition } from '@/components/ui/page-transition';
 
 const profileSchema = z.object({
   full_name: z.string().trim().max(100, 'Name must be less than 100 characters').optional(),
@@ -142,13 +141,11 @@ export default function ProfilePage() {
 
   if (authLoading) {
     return (
-      <PageTransition variant="rise">
       <Layout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
@@ -235,7 +232,6 @@ export default function ProfilePage() {
   );
 
   return (
-    <PageTransition variant="rise">
     <Layout>
       <div className="container py-8 max-w-4xl">
         {/* Header */}
@@ -513,9 +509,7 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }
 
 interface BookingItemProps {

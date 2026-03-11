@@ -51,7 +51,6 @@ import {
 import { toast } from 'sonner';
 import { venueTypeLabels } from '@/types/venue';
 import { useQueryClient } from '@tanstack/react-query';
-import { PageTransition } from '@/components/ui/page-transition';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -72,13 +71,11 @@ export default function AdminVenues() {
 
   if (loading) {
     return (
-      <PageTransition variant="fade">
       <Layout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
@@ -176,7 +173,6 @@ export default function AdminVenues() {
   const venueTypes = ['cafe', 'karaoke', 'pool_snooker', 'lounge'];
 
   return (
-    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
         <div className="flex items-center gap-4 mb-8">
@@ -489,7 +485,5 @@ export default function AdminVenues() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }

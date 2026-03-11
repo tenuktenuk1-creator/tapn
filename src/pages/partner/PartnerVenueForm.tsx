@@ -20,7 +20,6 @@ import {
 import { toast } from 'sonner';
 import { VenueType, venueTypeLabels } from '@/types/venue';
 import { Badge } from '@/components/ui/badge';
-import { PageTransition } from '@/components/ui/page-transition';
 
 const venueTypes: VenueType[] = ['cafe', 'karaoke', 'pool_snooker', 'lounge'];
 
@@ -112,13 +111,11 @@ export default function PartnerVenueForm() {
 
   if (authLoading || partnerLoading) {
     return (
-      <PageTransition variant="rise">
       <Layout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
@@ -230,7 +227,6 @@ export default function PartnerVenueForm() {
   };
 
   return (
-    <PageTransition variant="rise">
     <Layout>
       <div className="container py-8 max-w-2xl">
         <div className="flex items-center gap-4 mb-8">
@@ -423,7 +419,5 @@ export default function PartnerVenueForm() {
           </div>
         </form>
       </div>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }

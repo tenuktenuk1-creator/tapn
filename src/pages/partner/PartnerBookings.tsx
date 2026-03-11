@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { PageTransition } from '@/components/ui/page-transition';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -55,13 +54,11 @@ export default function PartnerBookings() {
 
   if (authLoading || partnerLoading) {
     return (
-      <PageTransition variant="fade">
       <Layout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </Layout>
-      </PageTransition>
     );
   }
 
@@ -139,7 +136,6 @@ export default function PartnerBookings() {
   const paginated  = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
-    <PageTransition variant="fade">
     <Layout>
       <div className="container py-8">
         {/* Header */}
@@ -448,7 +444,5 @@ export default function PartnerBookings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
-  
-    </PageTransition>);
+    </Layout>);
 }
