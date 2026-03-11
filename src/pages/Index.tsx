@@ -6,6 +6,7 @@ import { Layout } from '@/components/layout/Layout';
 import { 
   Search, 
   ChevronRight, 
+  CalendarCheck,
   LayoutGrid, 
   Clock, 
   Sparkles, 
@@ -32,27 +33,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 const howItWorksSteps = [
   { 
     number: 1, 
-    icon: LayoutGrid, 
-    title: 'Choose a Category', 
-    desc: 'Browse karaoke, gaming, bars, clubs & more' 
+    icon: Search,
+    title: 'Browse',
+    desc: 'Search venues fast and filter by what you want.',
   },
   { 
     number: 2, 
-    icon: Clock, 
-    title: 'Browse Real-Time Availability', 
-    desc: 'See live status and open slots instantly' 
+    icon: CalendarCheck,
+    title: 'Book',
+    desc: 'Pick a time, confirm details, and pay with QPay or card.',
   },
   { 
     number: 3, 
-    icon: Sparkles, 
-    title: 'Compare & Tap to Book', 
-    desc: 'Choose your spot and confirm in seconds' 
-  },
-  { 
-    number: 4, 
-    icon: PartyPopper, 
-    title: 'Arrive & Enjoy Your Night', 
-    desc: 'Show up and have an amazing time' 
+    icon: PartyPopper,
+    title: 'Go',
+    desc: 'Show your booking confirmation and enjoy your night.',
   },
 ];
 
