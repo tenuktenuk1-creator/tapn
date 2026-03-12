@@ -139,6 +139,39 @@ function formatPrice(price: number | null): string {
   return `₮${price}/цаг`;
 }
 
+/**
+ * Returns a location image URL for the hover crossfade:
+ *   1. images[1]  — explicit secondary photo uploaded by the venue owner
+ *   2. Google Maps satellite  — generated from lat/lng when no second photo exists
+ *   3. null  — no crossfade (venues with neither a second image nor coordinates)
+ *
+ * Uses the same Google Maps key that is already in use in VenueDetailHeader.tsx.
+ */
+const GMAPS_KEY = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
+
+function getLocationImage(venue: PublicVenue): string | null {
+  // Prefer an explicitly uploaded secondary image
+  if (venue.images && venue.images.length >= 2) {
+    return venue.images[1];
+  }
+  // Fall back to a satellite aerial — zoom 16 gives a neighbourhood-level view
+  // (not so close it's just a rooftop, not so far the venue is a dot)
+  if (venue.latitude != null && venue.longitude != null) {
+    const { latitude: lat, longitude: lng } = venue;
+    return (
+      `https://maps.googleapis.com/maps/api/staticmap` +
+      `?center=${lat},${lng}` +
+      `&zoom=16` +
+      `&size=600x450` +
+      `&scale=2` +
+      `&maptype=hybrid` +
+      `&markers=size:small%7Ccolor:0xff4444%7C${lat},${lng}` +
+      `&key=${GMAPS_KEY}`
+    );
+  }
+  return null;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function VenueCard({ venue }: VenueCardProps) {
@@ -169,9 +202,9 @@ export function VenueCard({ venue }: VenueCardProps) {
   const glowColor      = VENUE_GLOW[venue.venue_type]      ?? 'rgba(168,85,247,0.20)';
   const underlineColor = VENUE_UNDERLINE[venue.venue_type] ?? 'rgba(168,85,247,0.9)';
 
-  // images[0] = cover photo, images[1] = location / secondary image
+  // images[0] = cover photo; location image = images[1] or a satellite map fallback
   const coverImage    = venue.images?.[0] ?? null;
-  const locationImage = venue.images?.[1] ?? null;
+  const locationImage = getLocationImage(venue);
 
   // ── Mouse-tracking tilt ──────────────────────────────────────────────────
 
@@ -281,8 +314,9 @@ export function VenueCard({ venue }: VenueCardProps) {
               {locationImage && (
                 <motion.img
                   src={locationImage}
-                  alt={`${venue.name} — interior`}
+                  alt={`${venue.name} — location view`}
                   className="absolute inset-0 w-full h-full object-cover"
+                  loading="lazy"
                   animate={{ opacity: isHovered ? 1 : 0 }}
                   transition={{ duration: 0.45, ease: 'easeOut' }}
                 />
