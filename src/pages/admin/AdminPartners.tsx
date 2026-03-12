@@ -10,11 +10,12 @@ import {
   Check,
   X,
   MapPin,
-  User,
   Clock,
   Eye,
   Users,
+  UserPlus,
 } from 'lucide-react';
+import { useAdminPartnerRequests, useApprovePartnerRequest, useRejectPartnerRequest } from '@/hooks/usePartner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -206,6 +207,12 @@ export default function AdminPartners() {
   const rejectMutation = useRejectPartnerVenue();
   const revokeMutation = useRevokePartnerVenue();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+
+  // Partner applications
+  const { data: partnerRequests = [], isLoading: reqLoading } = useAdminPartnerRequests();
+  const approveReqMutation = useApprovePartnerRequest();
+  const rejectReqMutation = useRejectPartnerRequest();
+  const pendingReqs = partnerRequests.filter(r => r.status === 'pending');
 
   if (loading) {
     return (
@@ -430,10 +437,19 @@ export default function AdminPartners() {
 
         {/* Tabs */}
         {!isLoading && (
-          <Tabs defaultValue="pending">
+          <Tabs defaultValue="applications">
             <TabsList className="mb-6 bg-secondary border border-border">
+              <TabsTrigger value="applications" className="relative">
+                <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                Applications
+                {pendingReqs.length > 0 && (
+                  <span className="ml-2 bg-yellow-500 text-black text-xs font-bold rounded-full px-1.5 py-0.5">
+                    {pendingReqs.length}
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="pending" className="relative">
-                Pending
+                Venue Requests
                 {pending.length > 0 && (
                   <span className="ml-2 bg-yellow-500 text-black text-xs font-bold rounded-full px-1.5 py-0.5">
                     {pending.length}
@@ -443,6 +459,79 @@ export default function AdminPartners() {
               <TabsTrigger value="approved">Approved ({approved.length})</TabsTrigger>
               <TabsTrigger value="rejected">Rejected ({rejected.length})</TabsTrigger>
             </TabsList>
+
+            {/* Partner Applications tab */}
+            <TabsContent value="applications">
+              {reqLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : partnerRequests.length === 0 ? (
+                <div className="text-center py-16 card-dark rounded-2xl">
+                  <UserPlus className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No partner applications yet</p>
+                </div>
+              ) : (
+                <div className="card-dark rounded-2xl overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground">User ID</TableHead>
+                        <TableHead className="text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-muted-foreground">Applied</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {partnerRequests.map((req) => (
+                        <TableRow key={req.id} className="border-border">
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                <UserPlus className="h-4 w-4 text-primary" />
+                              </div>
+                              <span className="text-sm font-mono text-muted-foreground">{req.user_id.slice(0, 12)}…</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={req.status} />
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(req.created_at), 'MMM d, yyyy')}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {req.status === 'pending' && (
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
+                                  onClick={() => approveReqMutation.mutate({ requestId: req.id, userId: req.user_id })}
+                                  disabled={approveReqMutation.isPending}
+                                >
+                                  <Check className="h-4 w-4 mr-1" /> Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                                  onClick={() => rejectReqMutation.mutate(req.id)}
+                                  disabled={rejectReqMutation.isPending}
+                                >
+                                  <X className="h-4 w-4 mr-1" /> Reject
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
 
             <TabsContent value="pending">
               <PartnerVenueTable rows={pending} showActions="pending" />

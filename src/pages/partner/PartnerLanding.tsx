@@ -1,7 +1,7 @@
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsPartner, useBecomePartner } from '@/hooks/usePartner';
+import { useIsPartner, useMyPartnerRequest, useApplyPartner } from '@/hooks/usePartner';
 import { useNavigate } from 'react-router-dom';
 import { Building2, TrendingUp, Calendar, Users, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,14 +10,14 @@ export default function PartnerLanding() {
   const { user, loading: authLoading, refreshRole } = useAuth();
   const navigate = useNavigate();
   const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
-  const becomePartner = useBecomePartner();
+  const { data: myRequest, isLoading: requestLoading } = useMyPartnerRequest();
+  const applyPartner = useApplyPartner();
 
-  const handleBecomePartner = async () => {
+  const handleApply = async () => {
     if (!user) {
       navigate('/auth?redirect=/partner');
       return;
     }
-
     try {
       await becomePartner.mutateAsync();
       // Refresh role in AuthContext so ProtectedRoute sees isPartner=true before navigating
@@ -59,7 +59,7 @@ export default function PartnerLanding() {
     },
   ];
 
-  if (authLoading || partnerLoading) {
+  if (authLoading || partnerLoading || requestLoading) {
     return (
       <Layout>
         <div className="min-h-[60vh] flex items-center justify-center">
@@ -78,12 +78,53 @@ export default function PartnerLanding() {
           <h1 className="font-display text-3xl font-bold mb-4">
             You're already a <span className="text-gradient">Partner!</span>
           </h1>
-          <p className="text-muted-foreground mb-8">
-            Head to your dashboard to manage your venues.
-          </p>
+          <p className="text-muted-foreground mb-8">Head to your dashboard to manage your venues.</p>
           <Button onClick={() => navigate('/partner/dashboard')} className="gradient-primary">
-            Go to Dashboard
-            <ChevronRight className="ml-2 h-4 w-4" />
+            Go to Dashboard <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Application pending
+  if (myRequest?.status === 'pending') {
+    return (
+      <Layout>
+        <div className="container py-16 text-center max-w-lg mx-auto">
+          <div className="w-20 h-20 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-6">
+            <Clock className="h-10 w-10 text-yellow-500" />
+          </div>
+          <h1 className="font-display text-3xl font-bold mb-4 text-foreground">
+            Application <span className="text-yellow-500">Under Review</span>
+          </h1>
+          <p className="text-muted-foreground mb-4">
+            Your partner application has been submitted. Our team will review it and notify you once approved.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Submitted {new Date(myRequest.created_at).toLocaleDateString()}
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Application rejected
+  if (myRequest?.status === 'rejected') {
+    return (
+      <Layout>
+        <div className="container py-16 text-center max-w-lg mx-auto">
+          <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-red-500" />
+          </div>
+          <h1 className="font-display text-3xl font-bold mb-4 text-foreground">
+            Application <span className="text-red-500">Not Approved</span>
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            Unfortunately your application was not approved at this time. You may reapply.
+          </p>
+          <Button onClick={handleApply} disabled={applyPartner.isPending} className="gradient-primary">
+            {applyPartner.isPending ? 'Submitting…' : 'Reapply'} <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </Layout>
