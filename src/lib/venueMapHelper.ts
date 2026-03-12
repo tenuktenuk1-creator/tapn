@@ -97,7 +97,7 @@ export function buildVenueMapUrl(lat: number, lng: number): string | null {
     `&scale=2` +           // retina-quality tile at 2×
     `&maptype=roadmap` +
     // Single TAPN-fuchsia venue marker, no text label
-    `&markers=size:mid|color:0xff2bd6|${lat},${lng}` +
+    `&markers=color:0xff2bd6|size:lrg|${lat},${lng}` +
     styleParams +
     `&key=${GMAPS_KEY}`
   );

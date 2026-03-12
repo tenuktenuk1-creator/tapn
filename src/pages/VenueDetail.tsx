@@ -37,7 +37,7 @@ export default function VenueDetailPage() {
   return (
     <Layout>
       <div className="container py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-4">
           {/* Left: Detail header + Reviews */}
           <div className="lg:col-span-2 space-y-10">
             <VenueDetailHeader venue={venue} />

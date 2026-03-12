@@ -138,12 +138,6 @@ const VENUE_GLOW: Record<string, string> = {
  * rising from the bottom of the image into the card content zone.
  * Stays inside overflow:hidden — respects the rounded image corners.
  */
-const VENUE_IMAGE_GLOW: Record<string, string> = {
-  cafe:         'rgba(249,115,22,0.50)',
-  karaoke:      'rgba(236,72,153,0.50)',
-  pool_snooker: 'rgba(59,130,246,0.50)',
-  lounge:       'rgba(168,85,247,0.50)',
-};
 
 const VENUE_UNDERLINE: Record<string, string> = {
   cafe:         'rgba(249,115,22,0.9)',
@@ -187,7 +181,6 @@ export function VenueCard({ venue }: VenueCardProps) {
   const topAmenities = venue.amenities?.slice(0, 3)  ?? [];
 
   const glowColor      = VENUE_GLOW[venue.venue_type]       ?? 'rgba(168,85,247,0.20)';
-  const imageGlowColor = VENUE_IMAGE_GLOW[venue.venue_type] ?? 'rgba(168,85,247,0.50)';
   const underlineColor = VENUE_UNDERLINE[venue.venue_type]  ?? 'rgba(168,85,247,0.9)';
 
   // images[0] = cover photo
@@ -251,6 +244,7 @@ export function VenueCard({ venue }: VenueCardProps) {
         aria-hidden
         className="absolute -inset-1 rounded-[20px] pointer-events-none"
         style={{ filter: 'blur(14px)', zIndex: 0 }}
+        initial={{ opacity: 0 }}
         animate={{ opacity: isHovered ? 0.65 : 0 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
       >
@@ -314,6 +308,7 @@ export function VenueCard({ venue }: VenueCardProps) {
                   alt={`${venue.name} — location`}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading="lazy"
+                  initial={{ opacity: 0 }}
                   animate={{ opacity: isHovered ? 1 : 0 }}
                   transition={{ duration: 0.48, ease: 'easeOut' }}
                 />
@@ -335,28 +330,11 @@ export function VenueCard({ venue }: VenueCardProps) {
           <motion.div
             aria-hidden
             className="absolute inset-0 bg-black pointer-events-none"
+            initial={{ opacity: 0 }}
             animate={{ opacity: isHovered ? 0.22 : 0 }}
             transition={{ duration: 0.3 }}
           />
 
-          {/*
-           * Radial colour glow — centred at the bottom of the image, fades
-           * in on hover. Positioned inside overflow:hidden so it respects
-           * the rounded image corners. Creates a soft "light source" at the
-           * image/content boundary that adds warmth without obscuring the map.
-           *
-           * radial-gradient at 50% 100% = centre-bottom of the container,
-           * the gradient fades out before reaching the top half.
-           */}
-          <motion.div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: `radial-gradient(ellipse 100% 60% at 50% 100%, ${imageGlowColor}, transparent 70%)`,
-            }}
-            animate={{ opacity: isHovered ? 1 : 0 }}
-            transition={{ duration: 0.48, ease: 'easeOut' }}
-          />
 
           {/* Status badge — top-right, above link layer */}
           <Badge
@@ -404,6 +382,7 @@ export function VenueCard({ venue }: VenueCardProps) {
                 background: `linear-gradient(to right, ${underlineColor}, rgba(255,255,255,0.1), transparent)`,
                 originX: 0,
               }}
+              initial={{ scaleX: 0 }}
               animate={{ scaleX: isHovered ? 1 : 0 }}
               transition={{ duration: 0.38, ease: 'easeOut' }}
             />
