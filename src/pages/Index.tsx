@@ -3,14 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Layout } from '@/components/layout/Layout';
-import { 
-  Search, 
-  ChevronRight, 
-  CalendarCheck,
-  LayoutGrid, 
-  Clock, 
-  Sparkles, 
-  PartyPopper,
+import {
+  Search,
+  ChevronRight,
+  Sparkles,
   TrendingUp,
   ShieldCheck,
   Zap,
@@ -29,27 +25,8 @@ import {
 import { useVenues } from '@/hooks/useVenues';
 import { VenueCard } from '@/components/venues/VenueCard';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const howItWorksSteps = [
-  { 
-    number: 1, 
-    icon: Search,
-    title: 'Browse',
-    desc: 'Search venues fast and filter by what you want.',
-  },
-  { 
-    number: 2, 
-    icon: CalendarCheck,
-    title: 'Book',
-    desc: 'Pick a time, confirm details, and pay with QPay or card.',
-  },
-  { 
-    number: 3, 
-    icon: PartyPopper,
-    title: 'Go',
-    desc: 'Show your booking confirmation and enjoy your night.',
-  },
-];
+// Single source of truth for "How TAPN Works" steps (KAN-59)
+import { HOW_IT_WORKS_STEPS } from '@/lib/howItWorksSteps';
 
 const categories = [
   { type: 'karaoke', label: 'Karaoke', icon: Mic2 },
@@ -149,14 +126,17 @@ export default function Index() {
         </div>
       </section>
 
-      {/* How TAPN Works */}
+      {/* How TAPN Works — uses shared steps from /how-it-works (KAN-59) */}
       <section id="how-it-works" className="py-24 bg-background">
         <div className="container">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-16 text-gradient">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-4 text-gradient">
             How TAPN Works
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {howItWorksSteps.map(({ number, icon: Icon, title, desc }) => (
+          <p className="text-center text-muted-foreground mb-16">
+            Three simple steps to your perfect night out
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+            {HOW_IT_WORKS_STEPS.map(({ number, icon: Icon, title, desc }) => (
               <div key={number} className="relative card-dark rounded-2xl p-6 text-center">
                 <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center text-sm font-semibold text-primary bg-background">
                   {number}
@@ -168,6 +148,13 @@ export default function Index() {
                 <p className="text-sm text-muted-foreground">{desc}</p>
               </div>
             ))}
+          </div>
+          <div className="flex justify-center mt-8">
+            <Link to="/how-it-works">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                Learn more <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -321,6 +308,5 @@ export default function Index() {
           </Link>
         </div>
       </section>
-    </Layout>
-  );
+    </Layout>);
 }

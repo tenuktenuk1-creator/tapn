@@ -509,8 +509,7 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-    </Layout>
-  );
+    </Layout>);
 }
 
 interface BookingItemProps {

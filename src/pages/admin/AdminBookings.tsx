@@ -710,6 +710,5 @@ export default function AdminBookings() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>
-  );
+    </Layout>);
 }

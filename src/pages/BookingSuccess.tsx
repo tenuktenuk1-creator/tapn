@@ -137,6 +137,5 @@ export default function BookingSuccess() {
           </div>
         </div>
       </div>
-    </Layout>
-  );
+    </Layout>);
 }

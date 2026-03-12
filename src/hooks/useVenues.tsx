@@ -73,18 +73,44 @@ export function useVenue(id: string | undefined) {
   });
 }
 
-// If you have a separate admin table/view, change the table name here.
+export interface AdminVenue extends Venue {
+  owner_profile?: { full_name: string | null; email: string | null } | null;
+}
+
+// Admin view: all venues + owner display name resolved via two queries
 export function useAdminVenues() {
   return useQuery({
     queryKey: ["admin-venues"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1. Fetch all venues
+      const { data: venues, error } = await supabase
         .from("venues")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-      return (data ?? []) as Venue[];
+      if (!venues?.length) return [] as AdminVenue[];
+
+      // 2. Collect distinct owner_ids and fetch profiles
+      const ownerIds = [...new Set(venues.map(v => v.owner_id).filter(Boolean))] as string[];
+      let profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
+
+      if (ownerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", ownerIds);
+        if (profiles) {
+          profileMap = Object.fromEntries(
+            profiles.map(p => [p.id, { full_name: p.full_name, email: p.email }])
+          );
+        }
+      }
+
+      // 3. Merge
+      return venues.map(v => ({
+        ...v,
+        owner_profile: v.owner_id ? (profileMap[v.owner_id] ?? null) : null,
+      })) as AdminVenue[];
     },
   });
 }

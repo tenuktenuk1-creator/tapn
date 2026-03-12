@@ -7,7 +7,7 @@ import { PublicVenue, venueTypeLabels } from '@/types/venue';
 import {
   formatDistance,
   haversineDistance,
-  BUSY_BG,
+  BUSY_HEX,
   BUSY_LABELS,
   isVenueOpenNow,
 } from '@/lib/mapUtils';
@@ -15,7 +15,6 @@ import {
 interface MapVenueCardProps {
   venue: PublicVenue;
   isSelected?: boolean;
-  /** True when the corresponding map marker is being hovered (Feature 4) */
   isHovered?: boolean;
   userLocation: { lat: number; lng: number } | null;
   onClick?: () => void;
@@ -32,8 +31,7 @@ const VENUE_TYPE_COLORS: Record<string, string> = {
 
 function formatPrice(price: number | null): string | null {
   if (!price) return null;
-  if (price >= 1000) return `₮${(price / 1000).toFixed(0)}K/цаг`;
-  return `₮${price}/цаг`;
+  return price >= 1000 ? `₮${(price / 1000).toFixed(0)}K/цаг` : `₮${price}/цаг`;
 }
 
 export const MapVenueCard = memo(function MapVenueCard({
@@ -46,15 +44,16 @@ export const MapVenueCard = memo(function MapVenueCard({
   onMouseLeave,
 }: MapVenueCardProps) {
   const isOpen = isVenueOpenNow(venue);
+  const busyColor = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
+
+  // Single consolidated status: "Open · Quiet" / "Open · Moderate" / "Closed"
+  const statusLabel = isOpen
+    ? `Open · ${BUSY_LABELS[venue.busy_status]}`
+    : 'Closed';
 
   const distance =
     userLocation && venue.latitude != null && venue.longitude != null
-      ? haversineDistance(
-          userLocation.lat,
-          userLocation.lng,
-          venue.latitude,
-          venue.longitude,
-        )
+      ? haversineDistance(userLocation.lat, userLocation.lng, venue.latitude, venue.longitude)
       : null;
 
   const priceLabel = formatPrice(venue.price_per_hour);
@@ -66,9 +65,7 @@ export const MapVenueCard = memo(function MapVenueCard({
       tabIndex={0}
       aria-selected={isSelected}
       onClick={onClick}
-      onKeyDown={(e) =>
-        (e.key === 'Enter' || e.key === ' ') && onClick?.()
-      }
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.()}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={`flex gap-3 p-3 rounded-xl cursor-pointer transition-all border outline-none focus-visible:ring-2 focus-visible:ring-primary ${
@@ -113,28 +110,26 @@ export const MapVenueCard = memo(function MapVenueCard({
           </Badge>
         </div>
 
-        {/* Badges row */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-          <Badge
-            className={`${
-              BUSY_BG[venue.busy_status]
-            } text-white border-0 text-[10px] px-1.5 py-0`}
-          >
-            {BUSY_LABELS[venue.busy_status]}
-          </Badge>
+        {/* Status row — ONE consolidated pill */}
+        <div className="flex items-center gap-1.5 mb-1.5">
           <span
-            className={`text-[11px] font-medium ${
-              isOpen ? 'text-green-500' : 'text-muted-foreground'
-            }`}
+            className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{
+              background: `${busyColor}22`,
+              border: `1px solid ${busyColor}44`,
+              color: busyColor,
+            }}
           >
-            {isOpen ? 'Open' : 'Closed'}
+            {statusLabel}
           </span>
+
           {venue.rating > 0 && (
             <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
               <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
               {Number(venue.rating).toFixed(1)}
             </span>
           )}
+
           {priceLabel && (
             <span className="text-[11px] text-muted-foreground ml-auto">
               {priceLabel}
@@ -174,11 +169,7 @@ export const MapVenueCard = memo(function MapVenueCard({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
           >
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-[11px] gap-1 px-2"
-            >
+            <Button size="sm" variant="outline" className="h-7 text-[11px] gap-1 px-2">
               <Navigation className="h-3 w-3" />
               Go
             </Button>

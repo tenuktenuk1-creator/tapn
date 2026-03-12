@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, Pencil, Trash2, MessageSquare, ThumbsUp } from 'lucide-react';
+import { Star, Pencil, Trash2, MessageSquare, ThumbsUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -249,7 +249,7 @@ function ReviewForm({
 // Main ReviewSection
 export function ReviewSection({ venueId }: ReviewSectionProps) {
   const { user } = useAuth();
-  const { data: reviews = [], isLoading } = useVenueReviews(venueId);
+  const { data: reviews = [], isLoading, isError, refetch } = useVenueReviews(venueId);
   const { data: myReview } = useMyReview(venueId);
   const deleteReview = useDeleteReview();
 
@@ -364,6 +364,15 @@ export function ReviewSection({ venueId }: ReviewSectionProps) {
           {[1, 2].map((i) => (
             <div key={i} className="card-dark rounded-xl p-5 h-24 animate-pulse bg-secondary/50" />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="text-center py-10 card-dark rounded-xl space-y-3">
+          <AlertCircle className="h-10 w-10 mx-auto text-destructive/60" />
+          <p className="text-muted-foreground text-sm">Failed to load reviews.</p>
+          <Button size="sm" variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </div>
       ) : reviews.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">
