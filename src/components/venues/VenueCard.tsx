@@ -2,11 +2,16 @@
  * VenueCard — animated venue discovery card for the Venues page.
  *
  * Motion behaviour (card content only — nav and page layout are never animated):
- *   • 3-D perspective tilt on mouse-move (spring, ≤ 5 °)
+ *   • 3-D perspective tilt on mouse-move (spring, ≤ 5°)
  *   • Subtle per-venue-type glow halo behind the card on hover
- *   • On hover: cover photo cross-fades to secondary/location image (images[1])
+ *   • On hover: cover photo cross-fades to a dark styled location map
+ *   • Soft radial colour glow at the base of the image on hover
  *   • Venue name slides 3 px right + animated gradient underline grows in
  *   • "View Details" button lifts –1 px + arrow nudges right on hover
+ *
+ * Map logic lives in src/lib/venueMapHelper.ts — see that file for the
+ * static map URL builder, dark palette choices, and the decision not to
+ * add nearby-place markers at this card scale.
  *
  * All hover effects require a pointer device; touch renders statically.
  */
@@ -24,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, MapPin, Clock, Zap, Users, ArrowRight } from 'lucide-react';
 import { PublicVenue, venueTypeLabels, priceTierLabels } from '@/types/venue';
+import { getVenueLocationImage } from '@/lib/venueMapHelper';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,7 +37,7 @@ interface VenueCardProps {
   venue: PublicVenue;
 }
 
-// ─── Open-status logic ───────────────────────────────────────────────────────
+// ─── Open-status logic ────────────────────────────────────────────────────────
 
 function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
@@ -116,14 +122,27 @@ const VENUE_TYPE_COLORS: Record<string, string> = {
 };
 
 /**
- * Per-category glow colour — kept at low opacity so the halo reads as ambient
- * light rather than a heavy decoration. Blur and spread are intentionally small.
+ * Per-category outer glow — sits behind the card (outside overflow:hidden).
+ * Low opacity so it reads as ambient light, not a heavy decoration.
  */
 const VENUE_GLOW: Record<string, string> = {
   cafe:         'rgba(249,115,22,0.20)',
   karaoke:      'rgba(236,72,153,0.20)',
   pool_snooker: 'rgba(59,130,246,0.20)',
   lounge:       'rgba(168,85,247,0.20)',
+};
+
+/**
+ * Per-category radial glow applied INSIDE the image area on hover.
+ * Higher opacity than the outer halo so it reads as a soft light source
+ * rising from the bottom of the image into the card content zone.
+ * Stays inside overflow:hidden — respects the rounded image corners.
+ */
+const VENUE_IMAGE_GLOW: Record<string, string> = {
+  cafe:         'rgba(249,115,22,0.50)',
+  karaoke:      'rgba(236,72,153,0.50)',
+  pool_snooker: 'rgba(59,130,246,0.50)',
+  lounge:       'rgba(168,85,247,0.50)',
 };
 
 const VENUE_UNDERLINE: Record<string, string> = {
@@ -139,45 +158,12 @@ function formatPrice(price: number | null): string {
   return `₮${price}/цаг`;
 }
 
-/**
- * Returns a location image URL for the hover crossfade:
- *   1. images[1]  — explicit secondary photo uploaded by the venue owner
- *   2. Google Maps satellite  — generated from lat/lng when no second photo exists
- *   3. null  — no crossfade (venues with neither a second image nor coordinates)
- *
- * Uses the same Google Maps key that is already in use in VenueDetailHeader.tsx.
- */
-const GMAPS_KEY = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
-
-function getLocationImage(venue: PublicVenue): string | null {
-  // Prefer an explicitly uploaded secondary image
-  if (venue.images && venue.images.length >= 2) {
-    return venue.images[1];
-  }
-  // Fall back to a satellite aerial — zoom 16 gives a neighbourhood-level view
-  // (not so close it's just a rooftop, not so far the venue is a dot)
-  if (venue.latitude != null && venue.longitude != null) {
-    const { latitude: lat, longitude: lng } = venue;
-    return (
-      `https://maps.googleapis.com/maps/api/staticmap` +
-      `?center=${lat},${lng}` +
-      `&zoom=16` +
-      `&size=600x450` +
-      `&scale=2` +
-      `&maptype=hybrid` +
-      `&markers=size:small%7Ccolor:0xff4444%7C${lat},${lng}` +
-      `&key=${GMAPS_KEY}`
-    );
-  }
-  return null;
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function VenueCard({ venue }: VenueCardProps) {
   const { label, timeLabel, isOpen, closingSoon, openingSoon } = getOpenStatus(venue);
 
-  // Status badge colour
+  // ── Status badge colour ───────────────────────────────────────────────────
   const statusClassName =
     label === 'FULL'                   ? 'bg-red-500 text-white'
     : label === 'BUSY'                 ? 'bg-yellow-500 text-black'
@@ -186,7 +172,7 @@ export function VenueCard({ venue }: VenueCardProps) {
     : label === 'OPEN'                 ? 'bg-green-500 text-white'
     :                                    'bg-gray-600 text-white';
 
-  // Hours text colour
+  // ── Hours text colour ─────────────────────────────────────────────────────
   const timeClassName =
     label === 'FULL'                   ? 'text-red-500'
     : label === 'BUSY'                 ? 'text-yellow-500'
@@ -199,14 +185,18 @@ export function VenueCard({ venue }: VenueCardProps) {
 
   const topVibes     = venue.vibe_tags?.slice(0, 3)  ?? [];
   const topAmenities = venue.amenities?.slice(0, 3)  ?? [];
-  const glowColor      = VENUE_GLOW[venue.venue_type]      ?? 'rgba(168,85,247,0.20)';
-  const underlineColor = VENUE_UNDERLINE[venue.venue_type] ?? 'rgba(168,85,247,0.9)';
 
-  // images[0] = cover photo; location image = images[1] or a satellite map fallback
+  const glowColor      = VENUE_GLOW[venue.venue_type]       ?? 'rgba(168,85,247,0.20)';
+  const imageGlowColor = VENUE_IMAGE_GLOW[venue.venue_type] ?? 'rgba(168,85,247,0.50)';
+  const underlineColor = VENUE_UNDERLINE[venue.venue_type]  ?? 'rgba(168,85,247,0.9)';
+
+  // images[0] = cover photo
+  // locationImage = images[1] if present, else dark static map from lat/lng
+  // (see src/lib/venueMapHelper.ts for the URL builder and design rationale)
   const coverImage    = venue.images?.[0] ?? null;
-  const locationImage = getLocationImage(venue);
+  const locationImage = getVenueLocationImage(venue);
 
-  // ── Mouse-tracking tilt ──────────────────────────────────────────────────
+  // ── Mouse-tracking tilt ───────────────────────────────────────────────────
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -214,7 +204,7 @@ export function VenueCard({ venue }: VenueCardProps) {
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  // Normalised (-0.5 → 0.5) → degrees (±5°)
+  // Normalised (–0.5 → 0.5) → degrees (±5°)
   const rotateX = useTransform(mouseY, [-0.5, 0.5], [ 5, -5]);
   const rotateY = useTransform(mouseX, [-0.5, 0.5], [-5,  5]);
 
@@ -234,13 +224,14 @@ export function VenueCard({ venue }: VenueCardProps) {
     setIsHovered(false);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     /*
-     * h-full ensures the card fills the full grid cell height so all cards in
-     * a row are the same height regardless of their content length.
-     * No overflow:hidden here — the glow halo must bleed outside.
+     * Outer wrapper:
+     *   h-full   — fills the full CSS grid cell so all cards in a row are
+     *              the same height regardless of content length.
+     *   No overflow:hidden — the outer glow halo must bleed outside.
      */
     <div
       ref={containerRef}
@@ -250,10 +241,11 @@ export function VenueCard({ venue }: VenueCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={handleMouseLeave}
     >
+
       {/*
-       * Glow halo — sits behind the card.
-       * Small spread (-inset-1), low blur (14 px), low-opacity colour, capped
-       * animated opacity at 0.65 to stay premium rather than overpowering.
+       * Outer glow halo — sits BEHIND the card.
+       * Small spread (–inset-1), modest blur (14 px), low-opacity colour,
+       * animated peak opacity 0.65 → stays premium rather than overpowering.
        */}
       <motion.div
         aria-hidden
@@ -266,8 +258,8 @@ export function VenueCard({ venue }: VenueCardProps) {
       </motion.div>
 
       {/*
-       * Card surface — h-full so it stretches to fill the outer wrapper,
-       * which in turn fills the grid cell. Content distributes with flex.
+       * Card surface — h-full so it fills the outer wrapper (= grid cell).
+       * flex flex-col distributes: fixed image ↑, flex-1 content ↑, mt-auto button ↓
        */}
       <motion.div
         className="card-dark rounded-2xl overflow-hidden flex flex-col h-full relative"
@@ -277,7 +269,7 @@ export function VenueCard({ venue }: VenueCardProps) {
           zIndex: 1,
         }}
       >
-        {/* Full-card link layer */}
+        {/* Full-card transparent link — behind badges (z-10) / above card (z-20) */}
         <Link
           to={`/venues/${venue.id}`}
           className="absolute inset-0 z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
@@ -291,9 +283,14 @@ export function VenueCard({ venue }: VenueCardProps) {
           {coverImage ? (
             <>
               {/*
-               * Cover photo — fades toward transparent when a location image
-               * is available and the card is hovered. Falls back to static
-               * display (with gentle scale) when no secondary image exists.
+               * Cover photo — always the base layer.
+               *
+               * When locationImage is available:
+               *   Fades to near-transparent (0.12) on hover — not 0 so it
+               *   acts as a warm placeholder while the map tile loads.
+               *
+               * When locationImage is null:
+               *   Stays at opacity 1; gentle 1.05 scale adds hover life.
                */}
               <motion.img
                 src={coverImage}
@@ -303,26 +300,27 @@ export function VenueCard({ venue }: VenueCardProps) {
                   opacity: isHovered && locationImage ? 0.12 : 1,
                   scale:   isHovered && !locationImage ? 1.05 : 1,
                 }}
-                transition={{ duration: 0.45, ease: 'easeOut' }}
+                transition={{ duration: 0.48, ease: 'easeOut' }}
               />
 
               {/*
-               * Location / secondary image — cross-fades in on hover.
-               * object-cover fills the container at a natural zoom level.
-               * Only rendered when images[1] exists.
+               * Location image — dark styled static map (or images[1]).
+               * Fades in on hover, fully covers the image area.
+               * loading="lazy" defers the API call until the card is in viewport.
                */}
               {locationImage && (
                 <motion.img
                   src={locationImage}
-                  alt={`${venue.name} — location view`}
+                  alt={`${venue.name} — location`}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading="lazy"
                   animate={{ opacity: isHovered ? 1 : 0 }}
-                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                  transition={{ duration: 0.48, ease: 'easeOut' }}
                 />
               )}
             </>
           ) : (
+            /* Fallback for venues with no uploaded images */
             <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
               <span className="text-4xl font-display font-bold text-muted-foreground/30">
                 {venue.name.charAt(0)}
@@ -330,15 +328,37 @@ export function VenueCard({ venue }: VenueCardProps) {
             </div>
           )}
 
-          {/* Dark vignette — helps badges pop */}
+          {/*
+           * Dark vignette — uniform semi-transparent black overlay.
+           * Makes the status/price badges pop on any background image.
+           */}
           <motion.div
             aria-hidden
             className="absolute inset-0 bg-black pointer-events-none"
-            animate={{ opacity: isHovered ? 0.18 : 0 }}
+            animate={{ opacity: isHovered ? 0.22 : 0 }}
             transition={{ duration: 0.3 }}
           />
 
-          {/* Status badge — top-right */}
+          {/*
+           * Radial colour glow — centred at the bottom of the image, fades
+           * in on hover. Positioned inside overflow:hidden so it respects
+           * the rounded image corners. Creates a soft "light source" at the
+           * image/content boundary that adds warmth without obscuring the map.
+           *
+           * radial-gradient at 50% 100% = centre-bottom of the container,
+           * the gradient fades out before reaching the top half.
+           */}
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(ellipse 100% 60% at 50% 100%, ${imageGlowColor}, transparent 70%)`,
+            }}
+            animate={{ opacity: isHovered ? 1 : 0 }}
+            transition={{ duration: 0.48, ease: 'easeOut' }}
+          />
+
+          {/* Status badge — top-right, above link layer */}
           <Badge
             className={`absolute top-3 right-3 z-20 ${statusClassName} border-0 rounded-full text-xs font-semibold shadow-md pointer-events-none`}
           >
@@ -361,7 +381,9 @@ export function VenueCard({ venue }: VenueCardProps) {
               {formatPrice(venue.price_per_hour)}
             </Badge>
           ) : null}
+
         </div>
+        {/* ── end image area ── */}
 
         {/* ── Content ── */}
         <div className="p-5 flex flex-col flex-1">
@@ -491,6 +513,8 @@ export function VenueCard({ venue }: VenueCardProps) {
           </div>
 
         </div>
+        {/* ── end content ── */}
+
       </motion.div>
     </div>
   );
