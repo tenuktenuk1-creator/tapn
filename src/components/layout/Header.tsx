@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Menu, X, User, LogOut, Settings, MapPin } from 'lucide-react';
@@ -14,7 +14,15 @@ import {
 export function Header() {
   const { user, isAdmin, isPartner, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navLink = (to: string) =>
+    `text-sm font-medium transition-colors ${
+      location.pathname === to
+        ? 'text-foreground'
+        : 'text-muted-foreground hover:text-foreground'
+    }`;
 
   // Admin эсвэл Partner бол "Partner With Us" харуулахгүй
   const showPartnerLink = !isAdmin && !isPartner;
@@ -34,31 +42,14 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <Link
-            to="/venues"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Venues
-          </Link>
-          <Link
-            to="/plan-a-night"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Plan a Night
-          </Link>
-          <Link
-            to="/how-it-works"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            How It Works
-          </Link>
+          <Link to="/venues" className={navLink('/venues')}>Venues</Link>
+          <Link to="/plan-a-night" className={navLink('/plan-a-night')}>Plan a Night</Link>
+          {user && (
+            <Link to="/bookings" className={navLink('/bookings')}>My Bookings</Link>
+          )}
+          <Link to="/how-it-works" className={navLink('/how-it-works')}>How It Works</Link>
           {showPartnerLink && (
-            <Link
-              to="/partner"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Partner With Us
-            </Link>
+            <Link to="/partner" className={navLink('/partner')}>Partner With Us</Link>
           )}
         </nav>
 
@@ -160,6 +151,15 @@ export function Header() {
             >
               Plan a Night
             </Link>
+            {user && (
+              <Link
+                to="/bookings"
+                className="py-2 text-sm font-medium"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                My Bookings
+              </Link>
+            )}
             <Link
               to="/how-it-works"
               className="py-2 text-sm font-medium"

@@ -131,8 +131,8 @@ export default function HowItWorks() {
       {/* Step-by-Step Section */}
       <section className="py-24 bg-background">
         <div className="container">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-4 text-gradient">
-            Tap Into the Night
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-4 text-foreground">
+            Tap Into the <span className="text-gradient">Night</span>
           </h2>
           <p className="text-center text-muted-foreground mb-16">
             Three simple steps to your perfect night out
