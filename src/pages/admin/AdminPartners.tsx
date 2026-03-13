@@ -602,6 +602,5 @@ export default function AdminPartners() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
-  );
+    </Layout>);
 }

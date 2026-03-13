@@ -50,37 +50,23 @@ export function VenueDetailHeader({ venue }: VenueDetailHeaderProps) {
   return (
     <div className="space-y-6">
       {/* Image Gallery */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 h-[300px] md:h-[400px]">
-        <div className="md:col-span-2 rounded-2xl overflow-hidden bg-muted relative">
-          {venue.images && venue.images.length > 0 ? (
-            <img
-              src={venue.images[0]}
-              alt={venue.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-              <span className="text-6xl font-display font-bold text-muted-foreground/30">
-                {venue.name.charAt(0)}
-              </span>
-            </div>
-          )}
-          {/* Favorite icon overlay on main image */}
-          <div className="absolute top-3 right-3">
-            <FavoriteButton venueId={venue.id} venueName={venue.name} variant="icon" />
+      <div className="rounded-2xl overflow-hidden bg-muted relative h-[300px] md:h-[400px]">
+        {venue.images && venue.images.length > 0 ? (
+          <img
+            src={venue.images[0]}
+            alt={venue.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+            <span className="text-6xl font-display font-bold text-muted-foreground/30">
+              {venue.name.charAt(0)}
+            </span>
           </div>
-        </div>
-        <div className="hidden md:grid grid-rows-2 gap-3">
-          {venue.images?.slice(1, 3).map((img, i) => (
-            <div key={i} className="rounded-xl overflow-hidden bg-muted">
-              <img src={img} alt="" className="w-full h-full object-cover" />
-            </div>
-          )) || (
-            <>
-              <div className="rounded-xl bg-muted" />
-              <div className="rounded-xl bg-muted" />
-            </>
-          )}
+        )}
+        {/* Favorite icon overlay on main image */}
+        <div className="absolute top-3 right-3">
+          <FavoriteButton venueId={venue.id} venueName={venue.name} variant="icon" />
         </div>
       </div>
 

@@ -36,7 +36,6 @@ export default function AdminDashboard() {
     },
   });
 
-
   if (loading) {
     return (
       <Layout>
@@ -208,6 +207,5 @@ export default function AdminDashboard() {
           </Card>
         </div>
       </div>
-    </Layout>
-  );
+    </Layout>);
 }

@@ -147,6 +147,5 @@ export default function PartnerVenues() {
           </div>
         )}
       </div>
-    </Layout>
-  );
+    </Layout>);
 }

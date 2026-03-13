@@ -69,7 +69,7 @@ export function FavoriteButton({
       variant={isFavorited ? 'default' : 'outline'}
       onClick={handleClick}
       disabled={isLoading || toggle.isPending}
-      className={`gap-2 transition-all duration-200 ${
+      className={`gap-2 transition-all duration-100 ${
         isFavorited
           ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300'
           : 'border-muted-foreground/30 text-muted-foreground hover:border-red-400 hover:text-red-400'

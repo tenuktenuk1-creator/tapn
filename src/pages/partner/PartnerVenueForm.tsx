@@ -419,6 +419,5 @@ export default function PartnerVenueForm() {
           </div>
         </form>
       </div>
-    </Layout>
-  );
+    </Layout>);
 }

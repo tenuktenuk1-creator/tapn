@@ -3,149 +3,57 @@ import {
   useRef,
   useCallback,
   useState,
+  useMemo,
   memo,
 } from 'react';
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { useGoogleMaps } from '@/hooks/useGoogleMaps';
+import { useMapSaved } from '@/hooks/useMapSaved';
+import { useMapCache } from '@/hooks/useMapCache';
 import { PublicVenue } from '@/types/venue';
 import {
   BUSY_HEX,
   DEFAULT_CENTER,
   trackEvent,
+  clusterMarkerIcon,
+  buildAvatarDataUrl,
+  createInitialsSvg,
+  applyMapFilters,
+  MapFilterState,
+  DEFAULT_MAP_FILTERS,
 } from '@/lib/mapUtils';
 import { MapControls } from './MapControls';
-import { MapFloatingPanel } from './MapFloatingPanel';
+import { MapFiltersBar } from './MapFiltersBar';
+import { MapMarkerPreview } from './MapMarkerPreview';
+import { MapCompareSheet } from './MapCompareSheet';
+import { MapLegend } from './MapLegend';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, MapPin, LayoutList } from 'lucide-react';
+import { RefreshCw, MapPin, WifiOff } from 'lucide-react';
 
-// ─── Enhanced dark map style with pink/purple highway accents (Feature 6) ─────
+// ─── Dark map style (preserved from original) ─────────────────────────────────
 
 const DARK_STYLE: google.maps.MapTypeStyle[] = [
-  // Base geometry — deep near-black navy
   { elementType: 'geometry', stylers: [{ color: '#0d0d1a' }] },
-  // Global label colours
   { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
   { elementType: 'labels.text.stroke', stylers: [{ color: '#0d0d1a' }] },
-  // Hide all POIs so venues stand out
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0f0f1e' }] },
-  // Administrative
   { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-  {
-    featureType: 'administrative.locality',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#9ca3af' }],
-  },
-  // Roads — base fill/stroke
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
   { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#1a1a30' }] },
   { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0f0f22' }] },
   { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-  // Arterial roads — slightly lighter
   { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#1e1e36' }] },
-  // Highways — purple/pink accent (Feature 6)
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry',
-    stylers: [{ color: '#2d1b4e' }],
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#6b21a8' }],
-  },
-  {
-    featureType: 'road.highway',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#c084fc' }],
-  },
-  // Transit
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2d1b4e' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#6b21a8' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#c084fc' }] },
   { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#111118' }] },
-  // Water — very deep
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#050510' }] },
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#1e1e35' }] },
 ];
 
-// ─── Venue marker icon (Features 4 + 9) ──────────────────────────────────────
-//
-// • All states share the same 44×44 canvas so the anchor never shifts.
-// • isHovered  → animated pulsing ring (marker hover → sync to card)
-// • isSelected → static ring
-// • withFadeIn → SVG <g> opacity 0→1 on mount (Feature 9)
-// • Requires optimized:false on the Marker for SMIL to render (Feature 9)
-
-function venueMarkerIcon(
-  color: string,
-  isSelected: boolean,
-  isHovered = false,
-  withFadeIn = false,
-): google.maps.Icon {
-  const SIZE = 44;
-  const cx = 22;
-  const cy = 22;
-  const r = isSelected ? 14 : isHovered ? 13 : 11;
-  const strokeW = isSelected ? 3 : 2;
-
-  // Outer ring element
-  let ringEl = '';
-  if (isSelected) {
-    ringEl = `<circle cx="${cx}" cy="${cy}" r="19" fill="none" stroke="${color}" stroke-width="2.5" opacity="0.45"/>`;
-  } else if (isHovered) {
-    // Animated pulsing ring (Feature 4)
-    ringEl = `<circle cx="${cx}" cy="${cy}" r="15" fill="none" stroke="${color}" stroke-width="2" opacity="0.45">
-      <animate attributeName="r" values="15;20;15" dur="1.4s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.45;0.1;0.45" dur="1.4s" repeatCount="indefinite"/>
-    </circle>`;
-  }
-
-  // Wrap in <g> for a single fade-in over the whole marker (ring + dot)
-  const innerContent = `${ringEl}<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="white" stroke-width="${strokeW}"/>`;
-
-  const content = withFadeIn
-    ? `<g><animate attributeName="opacity" from="0" to="1" dur="0.3s" fill="freeze"/>${innerContent}</g>`
-    : innerContent;
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">${content}</svg>`;
-
-  return {
-    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(SIZE, SIZE),
-    anchor: new google.maps.Point(cx, cy),
-  };
-}
-
-// ─── Cluster marker icon with glow filter (Feature 3) ────────────────────────
-
-function clusterMarkerIcon(count: number): google.maps.Icon {
-  const label = count > 99 ? '99+' : String(count);
-  // SVG feGaussianBlur glow + outer translucent ring + radial gradient fill
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
-  <defs>
-    <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#ec4899"/>
-    </linearGradient>
-    <filter id="cglow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-  <circle cx="28" cy="28" r="26" fill="rgba(168,85,247,0.12)" stroke="rgba(168,85,247,0.30)" stroke-width="1.5"/>
-  <circle cx="28" cy="28" r="19" fill="url(#cg)" filter="url(#cglow)" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/>
-  <text x="28" y="33" text-anchor="middle" fill="white" font-size="12" font-weight="700" font-family="Outfit,sans-serif">${label}</text>
-</svg>`;
-
-  return {
-    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(56, 56),
-    anchor: new google.maps.Point(28, 28),
-  };
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface MapContainerProps {
   venues: PublicVenue[];
@@ -155,9 +63,10 @@ export interface MapContainerProps {
   onUserLocationChange: (loc: { lat: number; lng: number } | null) => void;
   openNow: boolean;
   onOpenNowChange: (value: boolean) => void;
-  /** Whether venue data is still loading — forwarded to the floating panel */
   isLoading: boolean;
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const MapContainer = memo(function MapContainer({
   venues,
@@ -170,39 +79,178 @@ export const MapContainer = memo(function MapContainer({
   isLoading,
 }: MapContainerProps) {
   const { isLoading: mapsLoading, isReady, isError, error } = useGoogleMaps();
+  const { isSaved, toggleSave, savedIds } = useMapSaved();
+  const { cachedVenues, updateCache, isOffline } = useMapCache();
 
-  // DOM refs
+  // ── DOM refs ────────────────────────────────────────────────────────────────
   const mapDivRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Maps API refs — never trigger re-renders
+  // ── Maps API refs ───────────────────────────────────────────────────────────
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const projOverlayRef = useRef<google.maps.OverlayView | null>(null);
 
-  // Stable callback ref — marker click handlers read the latest onVenueSelect
+  // ── Icon cache (venue data URL per venueId+state key) ──────────────────────
+  const avatarCache = useRef<Map<string, string>>(new Map());
+
+  // ── Stable callback refs ────────────────────────────────────────────────────
   const onVenueSelectRef = useRef(onVenueSelect);
-  useEffect(() => {
-    onVenueSelectRef.current = onVenueSelect;
-  }, [onVenueSelect]);
+  useEffect(() => { onVenueSelectRef.current = onVenueSelect; }, [onVenueSelect]);
 
   const venuesRef = useRef(venues);
+  useEffect(() => { venuesRef.current = venues; }, [venues]);
+
+  const savedIdsRef = useRef(savedIds);
+  useEffect(() => { savedIdsRef.current = savedIds; }, [savedIds]);
+
+  // Mirrors selectedVenueId prop for use inside marker click closures (toggle)
+  const selectedVenueIdRef = useRef(selectedVenueId);
+  useEffect(() => { selectedVenueIdRef.current = selectedVenueId; }, [selectedVenueId]);
+
+  // Suppresses the map background click that fires right after a marker click
+  const suppressMapClickRef = useRef(false);
+
+  // ── Local filter state ──────────────────────────────────────────────────────
+  // openNow syncs with parent; other filters are map-only.
+  const [localFilters, setLocalFilters] = useState<MapFilterState>({
+    ...DEFAULT_MAP_FILTERS,
+    openNow,
+  });
+
+  // Sync parent openNow into local filters
   useEffect(() => {
-    venuesRef.current = venues;
-  }, [venues]);
+    setLocalFilters((f) => ({ ...f, openNow }));
+  }, [openNow]);
 
-  // Floating panel visibility + hover sync (Feature 1 + 4)
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
-  const [hoveredVenueId, setHoveredVenueId] = useState<string | null>(null);
+  // When local openNow chip changes, propagate to parent
+  const handleFiltersChange = useCallback(
+    (next: MapFilterState) => {
+      setLocalFilters(next);
+      if (next.openNow !== openNow) onOpenNowChange(next.openNow);
+    },
+    [openNow, onOpenNowChange],
+  );
 
-  // Fullscreen
+  // ── Display venues: parent-filtered → local-filtered ───────────────────────
+  const displayVenues = useMemo(
+    () => applyMapFilters(venues, localFilters),
+    [venues, localFilters],
+  );
+
+  // Fallback to cache when offline
+  const effectiveVenues = useMemo(
+    () => (isOffline && venues.length === 0 ? (cachedVenues as PublicVenue[]) : displayVenues),
+    [isOffline, venues.length, cachedVenues, displayVenues],
+  );
+
+  // Update offline cache whenever we have fresh data
+  useEffect(() => {
+    if (!isOffline && venues.length > 0) updateCache(venues);
+  }, [venues, isOffline, updateCache]);
+
+  // ── Preview state (above-marker popup) ─────────────────────────────────────
+  // projTick: incremented via OverlayView.draw() to re-evaluate pixel position
+  const [projTick, setProjTick] = useState(0);
+
+  const previewVenue = useMemo(
+    () => (selectedVenueId ? effectiveVenues.find((v) => v.id === selectedVenueId) ?? null : null),
+    [selectedVenueId, effectiveVenues],
+  );
+
+  // Compute pixel position of the preview anchor
+  const previewPos = useMemo(() => {
+    if (!previewVenue || previewVenue.latitude == null || previewVenue.longitude == null) return null;
+    const proj = projOverlayRef.current?.getProjection();
+    if (!proj) return null;
+    const pt = proj.fromLatLngToDivPixel(
+      new google.maps.LatLng(previewVenue.latitude, previewVenue.longitude),
+    );
+    return pt ? { x: pt.x, y: pt.y } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewVenue, projTick]);
+
+  // ── Compare state ───────────────────────────────────────────────────────────
+  const [compareVenues, setCompareVenues] = useState<PublicVenue[]>([]);
+
+  const addToCompare = useCallback((venue: PublicVenue) => {
+    setCompareVenues((prev) =>
+      prev.length >= 3 || prev.find((v) => v.id === venue.id)
+        ? prev
+        : [...prev, venue],
+    );
+    trackEvent('compare_added', { venueId: venue.id });
+  }, []);
+
+  const removeFromCompare = useCallback((id: string) => {
+    setCompareVenues((prev) => prev.filter((v) => v.id !== id));
+    trackEvent('compare_removed', { venueId: id });
+  }, []);
+
+  // venuesInView = effectiveVenues (re-search area feature removed)
+  const venuesInView = effectiveVenues;
+
+  // ── Fullscreen state ────────────────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [cssFallbackFs, setCssFallbackFs] = useState(false);
   const [fullscreenSupported] = useState(() => !!document.fullscreenEnabled);
 
-  // ── Initialize map (once when Maps API is ready) ──────────────────────────
+  // ── Avatar icon helpers ─────────────────────────────────────────────────────
+
+  function iconCacheKey(id: string, sel: boolean, saved: boolean) {
+    return `${id}_${sel ? 1 : 0}_${saved ? 1 : 0}`;
+  }
+
+  function getSyncFallbackIcon(venue: PublicVenue, isSelected: boolean, isSavedVenue: boolean): google.maps.Icon {
+    const size = isSelected ? 72 : 60;
+    const url = createInitialsSvg(venue, size, undefined, isSelected, isSavedVenue);
+    return { url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size / 2, size / 2) };
+  }
+
+  async function getAvatarIcon(
+    venue: PublicVenue,
+    isSelected: boolean,
+    isSavedVenue: boolean,
+  ): Promise<google.maps.Icon> {
+    const key = iconCacheKey(venue.id, isSelected, isSavedVenue);
+    const size = isSelected ? 72 : 60;
+
+    if (avatarCache.current.has(key)) {
+      const url = avatarCache.current.get(key)!;
+      return { url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size / 2, size / 2) };
+    }
+
+    // Generate async — may use canvas (CORS-permissive) or SVG fallback
+    try {
+      const url = await buildAvatarDataUrl(venue, {
+        isSelected,
+        isSaved: isSavedVenue,
+        color: BUSY_HEX[venue.busy_status],
+      });
+      avatarCache.current.set(key, url);
+      return { url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size / 2, size / 2) };
+    } catch {
+      const url = createInitialsSvg(venue, size, undefined, isSelected, isSavedVenue);
+      avatarCache.current.set(key, url);
+      return { url, scaledSize: new google.maps.Size(size, size), anchor: new google.maps.Point(size / 2, size / 2) };
+    }
+  }
+
+  // Async: update a single marker's icon when its state changes
+  async function refreshMarkerIcon(venue: PublicVenue, isSelected: boolean, isSavedVenue: boolean) {
+    const marker = markersRef.current.get(venue.id);
+    if (!marker) return;
+    // Invalidate cached icon so it regenerates with new state
+    const key = iconCacheKey(venue.id, isSelected, isSavedVenue);
+    avatarCache.current.delete(key);
+    const icon = await getAvatarIcon(venue, isSelected, isSavedVenue);
+    marker.setIcon(icon);
+    marker.setZIndex(isSelected ? 100 : 1);
+  }
+
+  // ── Initialize map ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isReady || !mapDivRef.current || mapRef.current) return;
 
@@ -211,9 +259,7 @@ export const MapContainer = memo(function MapContainer({
       zoom: 13,
       disableDefaultUI: true,
       zoomControl: true,
-      zoomControlOptions: {
-        position: google.maps.ControlPosition.LEFT_BOTTOM,
-      },
+      zoomControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
       gestureHandling: 'greedy',
       styles: DARK_STYLE,
       clickableIcons: false,
@@ -221,20 +267,26 @@ export const MapContainer = memo(function MapContainer({
 
     mapRef.current = map;
 
-    // Map background click → deselect venue
+    // Background click → deselect (guarded so marker clicks don't bubble through)
     map.addListener('click', () => {
+      if (suppressMapClickRef.current) return;
       onVenueSelectRef.current(null);
     });
 
-    // Debounced idle — placeholder for future camera-state persistence
-    map.addListener('idle', () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(() => {
-        /* future: persist camera state */
-      }, 300);
-    });
+    // Close preview on drag start
+    map.addListener('dragstart', () => onVenueSelectRef.current(null));
 
-    // Marker clusterer with brand-styled cluster icons (Feature 3)
+    // OverlayView for pixel coordinate projection
+    const projOverlay = new google.maps.OverlayView();
+    let projDrawTimer: ReturnType<typeof setTimeout>;
+    projOverlay.draw = () => {
+      clearTimeout(projDrawTimer);
+      projDrawTimer = setTimeout(() => setProjTick((n) => n + 1), 16);
+    };
+    projOverlay.setMap(map);
+    projOverlayRef.current = projOverlay;
+
+    // Cluster renderer
     clustererRef.current = new MarkerClusterer({
       map,
       renderer: {
@@ -249,53 +301,62 @@ export const MapContainer = memo(function MapContainer({
     });
 
     trackEvent('map_loaded');
-
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
   }, [isReady]);
 
-  // ── Rebuild all markers when venue list changes ───────────────────────────
+  // ── Rebuild markers when venuesInView changes ──────────────────────────────
   useEffect(() => {
     if (!isReady || !mapRef.current || !clustererRef.current) return;
 
     const clusterer = clustererRef.current;
-
-    // Tear down existing markers
     clusterer.clearMarkers();
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current.clear();
 
     const newMarkers: google.maps.Marker[] = [];
 
-    venues.forEach((venue) => {
+    venuesInView.forEach((venue) => {
       if (venue.latitude == null || venue.longitude == null) return;
 
       const isSelected = venue.id === selectedVenueId;
-      const color = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
+      const isSavedVenue = savedIdsRef.current.has(venue.id);
+
+      // Start with synchronous SVG fallback (renders immediately)
+      const fallbackIcon = getSyncFallbackIcon(venue, isSelected, isSavedVenue);
 
       const marker = new google.maps.Marker({
         position: { lat: venue.latitude, lng: venue.longitude },
         title: venue.name,
-        // withFadeIn=true: each new marker fades in (Feature 9)
-        icon: venueMarkerIcon(color, isSelected, false, true),
+        icon: fallbackIcon,
         zIndex: isSelected ? 100 : 1,
-        // Required for SMIL animations to render (Feature 9)
         optimized: false,
       });
 
-      // Marker click → select venue + open floating panel
-      marker.addListener('click', () => {
-        const current = venuesRef.current.find((v) => v.id === venue.id) ?? venue;
-        onVenueSelectRef.current(current.id);
-        setIsPanelOpen(true);
-        trackEvent('marker_clicked', { venueId: current.id, venueName: current.name });
+      // Asynchronously upgrade to canvas avatar
+      getAvatarIcon(venue, isSelected, isSavedVenue).then((icon) => {
+        if (markersRef.current.has(venue.id)) {
+          marker.setIcon(icon);
+        }
       });
 
-      // Hover sync: marker hover → highlight card in panel (Feature 4)
-      // setHoveredVenueId is a stable React setter — no stale closure issue
-      marker.addListener('mouseover', () => setHoveredVenueId(venue.id));
-      marker.addListener('mouseout', () => setHoveredVenueId(null));
+      // Click → select + show preview (or toggle off if already selected)
+      marker.addListener('click', (e: google.maps.MapMouseEvent) => {
+        // Stop event so the map background click does NOT also fire,
+        // which would immediately clear the selection we're about to set.
+        e.stop();
+
+        // Brief guard so any residual map-click that slips through is ignored
+        suppressMapClickRef.current = true;
+        setTimeout(() => { suppressMapClickRef.current = false; }, 50);
+
+        const current = venuesRef.current.find((v) => v.id === venue.id) ?? venue;
+        // Toggle: clicking the active marker closes the preview
+        const nextId = selectedVenueIdRef.current === current.id ? null : current.id;
+        onVenueSelectRef.current(nextId);
+
+        if (nextId) {
+          trackEvent('marker_clicked', { venueId: current.id, venueName: current.name });
+        }
+      });
 
       markersRef.current.set(venue.id, marker);
       newMarkers.push(marker);
@@ -303,43 +364,39 @@ export const MapContainer = memo(function MapContainer({
 
     clusterer.addMarkers(newMarkers);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venues, isReady]);
+  }, [venuesInView, isReady]);
 
-  // ── Update marker icons when selection or hover changes ───────────────────
-  // (no fade-in on updates — avoids re-triggering animation on every hover)
+  // ── Update marker icons on selection/saved state changes ──────────────────
   useEffect(() => {
     if (!isReady) return;
-    markersRef.current.forEach((marker, id) => {
+    markersRef.current.forEach((_, id) => {
       const venue = venuesRef.current.find((v) => v.id === id);
       if (!venue) return;
-      const isSel = id === selectedVenueId;
-      const isHov = id === hoveredVenueId;
-      const color = BUSY_HEX[venue.busy_status] ?? BUSY_HEX.quiet;
-      marker.setIcon(venueMarkerIcon(color, isSel, isHov, false));
-      marker.setZIndex(isSel ? 100 : isHov ? 50 : 1);
+      const isSelected = id === selectedVenueId;
+      const isSavedVenue = savedIdsRef.current.has(id);
+      refreshMarkerIcon(venue, isSelected, isSavedVenue);
     });
-  }, [selectedVenueId, hoveredVenueId, isReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVenueId, savedIds, isReady]);
 
   // ── Pan to selected venue ─────────────────────────────────────────────────
   useEffect(() => {
     if (!isReady || !mapRef.current || !selectedVenueId) return;
-    const venue = venues.find((v) => v.id === selectedVenueId);
+    const venue = effectiveVenues.find((v) => v.id === selectedVenueId);
     if (!venue || venue.latitude == null || venue.longitude == null) return;
     mapRef.current.panTo({ lat: venue.latitude, lng: venue.longitude });
-  }, [selectedVenueId, venues, isReady]);
+  }, [selectedVenueId, effectiveVenues, isReady]);
 
   // ── Locate me ─────────────────────────────────────────────────────────────
   const handleLocate = useCallback(() => {
     if (!mapRef.current) return;
     trackEvent('locate_clicked');
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         onUserLocationChange(loc);
         mapRef.current!.panTo(loc);
         mapRef.current!.setZoom(15);
-
         if (userMarkerRef.current) {
           userMarkerRef.current.setPosition(loc);
         } else {
@@ -360,7 +417,7 @@ export const MapContainer = memo(function MapContainer({
         }
       },
       () => {
-        console.info('[TAPN] Geolocation denied, staying at default center.');
+        console.info('[TAPN] Geolocation denied');
       },
     );
   }, [onUserLocationChange]);
@@ -368,7 +425,6 @@ export const MapContainer = memo(function MapContainer({
   // ── Fullscreen ────────────────────────────────────────────────────────────
   const handleFullscreenToggle = useCallback(() => {
     if (!containerRef.current) return;
-
     if (!document.fullscreenElement && !cssFallbackFs) {
       containerRef.current.requestFullscreen().catch(() => {
         setCssFallbackFs(true);
@@ -384,7 +440,6 @@ export const MapContainer = memo(function MapContainer({
     }
   }, [cssFallbackFs]);
 
-  // Sync fullscreen state with the native Fullscreen API
   useEffect(() => {
     const handler = () => {
       const active = !!document.fullscreenElement;
@@ -397,7 +452,6 @@ export const MapContainer = memo(function MapContainer({
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
-  // Escape key exits CSS-fallback fullscreen
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && cssFallbackFs) {
@@ -431,11 +485,7 @@ export const MapContainer = memo(function MapContainer({
         <div>
           <p className="font-semibold text-foreground mb-1">Map couldn't load</p>
           <p className="text-sm text-muted-foreground mb-4">{error}</p>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => window.location.reload()}
-          >
+          <Button variant="outline" className="gap-2" onClick={() => window.location.reload()}>
             <RefreshCw className="h-4 w-4" />
             Retry
           </Button>
@@ -451,61 +501,75 @@ export const MapContainer = memo(function MapContainer({
         cssFallbackFs ? 'fixed inset-0 z-[9999] rounded-none' : ''
       }`}
     >
-      {/* Google Maps DOM node */}
+      {/* Google Maps DOM node — full width, full height */}
       <div ref={mapDivRef} className="absolute inset-0" />
 
-      {/* ── Floating glass panel — desktop only (Feature 1) ──────────────── */}
-      <MapFloatingPanel
-        venues={venues}
-        selectedVenueId={selectedVenueId}
-        hoveredVenueId={hoveredVenueId}
-        userLocation={userLocation}
-        isLoading={isLoading}
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        onVenueSelect={(id) => {
-          onVenueSelect(id);
-          trackEvent('panel_venue_selected', { venueId: id });
-        }}
-        onVenueHover={setHoveredVenueId}
-      />
-
-      {/* ── Re-open panel button — desktop only, shown when panel is closed ── */}
-      {!isPanelOpen && (
-        <button
-          type="button"
-          onClick={() => setIsPanelOpen(true)}
-          className="absolute left-3 top-3 z-[4] hidden lg:flex items-center gap-2 bg-background/90 backdrop-blur-sm border border-border rounded-xl px-3 py-2.5 text-sm font-medium text-foreground shadow-lg hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label="Show venue list"
+      {/* ── Offline banner ───────────────────────────────────────────── */}
+      {isOffline && (
+        <div
+          className="absolute top-0 left-0 right-0 z-[10] flex items-center justify-center gap-2 py-2 text-[12px] font-medium text-yellow-300"
+          style={{ background: 'rgba(120,80,0,0.85)', backdropFilter: 'blur(8px)' }}
         >
-          <LayoutList className="h-4 w-4 text-primary" />
-          <span>Venues</span>
-          {venues.length > 0 && (
-            <span className="ml-0.5 bg-primary/20 text-primary text-xs px-1.5 py-0.5 rounded-full font-semibold">
-              {venues.length}
-            </span>
+          <WifiOff className="h-3.5 w-3.5" />
+          Offline — showing cached venues
+          {cachedVenues.length > 0 && (
+            <span className="opacity-70">({cachedVenues.length} saved)</span>
           )}
-        </button>
+        </div>
       )}
 
-      {/* ── Map controls — top right ─────────────────────────────────────── */}
+      {/* ── Filter bar — overlaid at top ─────────────────────────────── */}
+      <MapFiltersBar
+        filters={localFilters}
+        onChange={handleFiltersChange}
+        venueCount={venuesInView.length}
+      />
+
+      {/* ── Above-marker venue preview ───────────────────────────────── */}
+      {previewVenue && previewPos && (
+        <MapMarkerPreview
+          venue={previewVenue}
+          pos={previewPos}
+          isSaved={isSaved(previewVenue.id)}
+          inCompare={compareVenues.some((v) => v.id === previewVenue.id)}
+          compareCount={compareVenues.length}
+          userLocation={userLocation}
+          onClose={() => onVenueSelect(null)}
+          onToggleSave={(id) => {
+            toggleSave(id);
+            trackEvent(isSaved(id) ? 'venue_unsaved' : 'venue_saved', { venueId: id });
+          }}
+          onAddToCompare={addToCompare}
+          onRemoveFromCompare={removeFromCompare}
+        />
+      )}
+
+      {/* ── Map controls — top right ─────────────────────────────────── */}
       <MapControls
         onLocate={handleLocate}
         isFullscreen={isFullscreen}
         onFullscreenToggle={handleFullscreenToggle}
         fullscreenSupported={fullscreenSupported}
-        openNow={openNow}
-        onOpenNowToggle={() => {
-          onOpenNowChange(!openNow);
-          trackEvent('filter_applied', { openNow: !openNow });
-        }}
+        openNow={localFilters.openNow}
+        onOpenNowToggle={() => handleFiltersChange({ ...localFilters, openNow: !localFilters.openNow })}
       />
 
-      {/* Mobile "Close" button shown only during fullscreen */}
+      {/* ── Map legend — bottom right ────────────────────────────────── */}
+      <MapLegend />
+
+      {/* ── Compare sheet — bottom overlay ──────────────────────────── */}
+      <MapCompareSheet
+        venues={compareVenues}
+        userLocation={userLocation}
+        onRemove={removeFromCompare}
+        onClear={() => setCompareVenues([])}
+      />
+
+      {/* Mobile close fullscreen */}
       {isFullscreen && (
         <button
           onClick={handleFullscreenToggle}
-          className="absolute top-3 left-3 z-[5] bg-background/90 backdrop-blur-sm border border-border text-foreground px-3 py-2 rounded-lg text-sm font-medium shadow-md sm:hidden"
+          className="absolute top-3 left-3 z-[9] bg-background/90 backdrop-blur-sm border border-border text-foreground px-3 py-2 rounded-lg text-sm font-medium shadow-md sm:hidden"
           aria-label="Exit fullscreen"
         >
           Close

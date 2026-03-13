@@ -427,6 +427,5 @@ export default function AdminVenueForm() {
           </div>
         </form>
       </div>
-    </Layout>
-  );
+    </Layout>);
 }
