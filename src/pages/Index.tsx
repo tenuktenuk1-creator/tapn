@@ -135,7 +135,7 @@ export default function Index() {
           <p className="text-center text-muted-foreground mb-16">
             Three simple steps to your perfect night out
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {HOW_IT_WORKS_STEPS.map(({ number, icon: Icon, title, desc }) => (
               <div key={number} className="relative card-dark rounded-2xl p-6 text-center">
                 <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full border-2 border-primary flex items-center justify-center text-sm font-semibold text-primary bg-background">
