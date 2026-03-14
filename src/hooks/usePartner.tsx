@@ -244,11 +244,12 @@ export function useApprovePartnerRequest() {
       if (reqErr) throw reqErr;
       const { error: roleErr } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role: 'partner' });
-      if (roleErr && !roleErr.message.includes('duplicate') && !roleErr.code?.includes('23505')) throw roleErr;
+        .upsert({ user_id: userId, role: 'partner' }, { onConflict: 'user_id' });
+      if (roleErr) throw roleErr;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['is-partner'] });
     },
   });
 }
@@ -266,6 +267,30 @@ export function useRejectPartnerRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['is-partner'] });
+    },
+  });
+}
+
+// Admin: revoke partner role (approved → rejected + remove user_roles entry)
+export function useRevokePartnerRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, userId }: { requestId: string; userId: string }) => {
+      const { error: reqErr } = await supabase
+        .from('partner_requests')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
+      if (reqErr) throw reqErr;
+      const { error: roleErr } = await supabase
+        .from('user_roles')
+        .update({ role: 'user' })
+        .eq('user_id', userId);
+      if (roleErr) throw roleErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['is-partner'] });
     },
   });
 }

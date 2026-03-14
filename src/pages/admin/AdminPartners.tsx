@@ -15,7 +15,7 @@ import {
   Users,
   UserPlus,
 } from 'lucide-react';
-import { useAdminPartnerRequests, useApprovePartnerRequest, useRejectPartnerRequest } from '@/hooks/usePartner';
+import { useAdminPartnerRequests, useApprovePartnerRequest, useRejectPartnerRequest, useRevokePartnerRequest } from '@/hooks/usePartner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -212,6 +212,7 @@ export default function AdminPartners() {
   const { data: partnerRequests = [], isLoading: reqLoading } = useAdminPartnerRequests();
   const approveReqMutation = useApprovePartnerRequest();
   const rejectReqMutation = useRejectPartnerRequest();
+  const revokeReqMutation = useRevokePartnerRequest();
   const pendingReqs = partnerRequests.filter(r => r.status === 'pending');
 
   if (loading) {
@@ -523,6 +524,17 @@ export default function AdminPartners() {
                                   <X className="h-4 w-4 mr-1" /> Reject
                                 </Button>
                               </div>
+                            )}
+                            {req.status === 'approved' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                                onClick={() => revokeReqMutation.mutate({ requestId: req.id, userId: req.user_id })}
+                                disabled={revokeReqMutation.isPending}
+                              >
+                                <X className="h-4 w-4 mr-1" /> Revoke Partner
+                              </Button>
                             )}
                           </TableCell>
                         </TableRow>

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsPartner, useMyPartnerRequest, useApplyPartner } from '@/hooks/usePartner';
 import { useNavigate } from 'react-router-dom';
-import { Building2, TrendingUp, Calendar, Users, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Building2, TrendingUp, Calendar, Users, ChevronRight, CheckCircle, Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PartnerLanding() {
@@ -19,7 +19,7 @@ export default function PartnerLanding() {
       return;
     }
     try {
-      await becomePartner.mutateAsync();
+      await applyPartner.mutateAsync();
       // Refresh role in AuthContext so ProtectedRoute sees isPartner=true before navigating
       await refreshRole(user.id);
       toast.success('Welcome to the TAPN Partner Program!');
@@ -146,11 +146,11 @@ export default function PartnerLanding() {
             </p>
             <Button
               size="lg"
-              onClick={handleBecomePartner}
-              disabled={becomePartner.isPending}
+              onClick={handleApply}
+              disabled={applyPartner.isPending}
               className="gradient-primary text-lg px-8 py-6"
             >
-              {becomePartner.isPending ? (
+              {applyPartner.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Joining…
@@ -218,11 +218,11 @@ export default function PartnerLanding() {
           <div className="text-center mt-12">
             <Button
               size="lg"
-              onClick={handleBecomePartner}
-              disabled={becomePartner.isPending}
+              onClick={handleApply}
+              disabled={applyPartner.isPending}
               className="gradient-primary"
             >
-              {becomePartner.isPending ? (
+              {applyPartner.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Joining…
