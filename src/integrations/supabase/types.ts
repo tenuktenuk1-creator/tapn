@@ -263,6 +263,8 @@ export type Database = {
         Row: {
           address: string
           amenities: string[] | null
+          busy_status: Database["public"]["Enums"]["busy_status"] | null
+          busy_status_updated_at: string | null
           city: string
           created_at: string | null
           description: string | null
@@ -286,6 +288,8 @@ export type Database = {
         Insert: {
           address: string
           amenities?: string[] | null
+          busy_status?: Database["public"]["Enums"]["busy_status"] | null
+          busy_status_updated_at?: string | null
           city: string
           created_at?: string | null
           description?: string | null
@@ -309,6 +313,8 @@ export type Database = {
         Update: {
           address?: string
           amenities?: string[] | null
+          busy_status?: Database["public"]["Enums"]["busy_status"] | null
+          busy_status_updated_at?: string | null
           city?: string
           created_at?: string | null
           description?: string | null
@@ -337,6 +343,8 @@ export type Database = {
         Row: {
           address: string | null
           amenities: string[] | null
+          busy_status: Database["public"]["Enums"]["busy_status"] | null
+          busy_status_updated_at: string | null
           city: string | null
           created_at: string | null
           description: string | null
@@ -358,6 +366,8 @@ export type Database = {
         Insert: {
           address?: string | null
           amenities?: string[] | null
+          busy_status?: Database["public"]["Enums"]["busy_status"] | null
+          busy_status_updated_at?: string | null
           city?: string | null
           created_at?: string | null
           description?: string | null
@@ -379,6 +389,8 @@ export type Database = {
         Update: {
           address?: string | null
           amenities?: string[] | null
+          busy_status?: Database["public"]["Enums"]["busy_status"] | null
+          busy_status_updated_at?: string | null
           city?: string | null
           created_at?: string | null
           description?: string | null
@@ -412,6 +424,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user" | "partner"
       booking_status: "pending" | "approved" | "rejected" | "cancelled"
+      busy_status: "quiet" | "moderate" | "busy"
       venue_type: "cafe" | "karaoke" | "pool_snooker" | "lounge"
     }
     CompositeTypes: {
@@ -542,6 +555,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user", "partner"],
       booking_status: ["pending", "approved", "rejected", "cancelled"],
+      busy_status: ["quiet", "moderate", "busy"],
       venue_type: ["cafe", "karaoke", "pool_snooker", "lounge"],
     },
   },
