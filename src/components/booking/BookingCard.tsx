@@ -70,9 +70,9 @@ export function BookingCard({ booking, showActions, onCancel }: BookingCardProps
               )}
             </div>
 
-            {booking.notes && (
+            {booking.notes && !booking.notes.startsWith('Lookup Token:') && (
               <p className="text-sm text-muted-foreground italic">
-                "{booking.notes}"
+                "{booking.notes.split('\n---\n')[0]}"
               </p>
             )}
           </div>
@@ -80,7 +80,7 @@ export function BookingCard({ booking, showActions, onCancel }: BookingCardProps
           <div className="flex flex-col items-end gap-2">
             <div className="text-right">
               <div className="text-lg font-semibold">
-                ₮{(booking.total_price || 0).toLocaleString()}
+                ₮{((booking.total_price || 0) / 100).toLocaleString()}
               </div>
               <div className="text-xs text-muted-foreground">
                 {booking.payment_status}

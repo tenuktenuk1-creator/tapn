@@ -115,7 +115,10 @@ export function BookingForm({ venue }: BookingFormProps) {
       });
 
       if (error || data?.error) {
-        toast.error(data?.error || 'Failed to create booking');
+        // Show specific server error message if available
+        const errorMsg = data?.error || error?.message || 'Failed to create booking';
+        console.error('Booking error:', { error, data });
+        toast.error(errorMsg);
         setIsLoading(false);
         return;
       }

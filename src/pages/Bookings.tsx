@@ -70,6 +70,11 @@ function BookingItem({ booking, onViewDetails, cancelBooking }: BookingItemProps
             <Clock className="h-3 w-3" />
             {booking.start_time?.slice(0, 5)} – {booking.end_time?.slice(0, 5)}
           </span>
+          {booking.total_price != null && (
+            <span className="font-medium text-primary">
+              ₮{((booking.total_price || 0) / 100).toLocaleString()}
+            </span>
+          )}
           {venueAddress && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />

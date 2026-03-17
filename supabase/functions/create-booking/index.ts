@@ -1,7 +1,5 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-
-declare const Deno: any;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,15 +48,15 @@ function isValidPhone(phone: string): boolean {
 }
 
 function isValidName(name: string): boolean {
-  // Allow Latin, Cyrillic (Mongolian), spaces, hyphens, apostrophes, dots
-  return name.length >= 2 && name.length <= 100 && /^[\p{L}\s\-'.]+$/u.test(name);
+  // Allow Latin, Cyrillic (Mongolian), digits, spaces, hyphens, apostrophes, dots
+  return name.length >= 2 && name.length <= 100 && /^[\p{L}\p{N}\s\-'.]+$/u.test(name);
 }
 
 function sanitizeString(input: string): string {
   return input.trim().replace(/[<>]/g, '');
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
@@ -198,7 +196,8 @@ serve(async (req) => {
       .eq("venue_id", venue_id)
       .eq("booking_date", booking_date)
       .in("status", ["confirmed", "pending"])
-      .or(`start_time.lt.${end_time},end_time.gt.${start_time}`);
+      .lt("start_time", end_time)
+      .gt("end_time", start_time);
 
     if (checkError) {
       logStep("Error checking availability", { error: checkError.message });
