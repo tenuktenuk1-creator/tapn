@@ -151,7 +151,7 @@ export default function Index() {
           </div>
           <div className="flex justify-center mt-8">
             <Link to="/how-it-works">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+              <Button variant="ghost" size="sm" className="text-white hover:text-white">
                 Learn more <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </Link>
