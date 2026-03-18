@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +18,8 @@ import {
   Moon,
   Sparkles,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Save,
   Loader2,
   Users,
@@ -56,6 +58,24 @@ const VIBE_OPTIONS = [
   { value: 'classy', label: '🥂 Classy & Upscale' },
 ];
 
+// Party size number slide variants (direction-aware)
+const numberVariants = {
+  enter: (dir: 1 | -1) => ({
+    y: dir === 1 ? -18 : 18,
+    opacity: 0,
+  }),
+  center: {
+    y: 0,
+    opacity: 1,
+    transition: { duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
+  exit: (dir: 1 | -1) => ({
+    y: dir === 1 ? 18 : -18,
+    opacity: 0,
+    transition: { duration: 0.12, ease: [0.55, 0, 1, 0.45] },
+  }),
+};
+
 export default function PlanANight() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -69,9 +89,20 @@ export default function PlanANight() {
   const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
 
   // KAN-48: New fields
-  const [partySize, setPartySize] = useState<number>(2);
+  const [partySize, setPartySize] = useState<number>(1);
+  const [partySizeDir, setPartySizeDir] = useState<1 | -1>(1);
   const [preferredVibe, setPreferredVibe] = useState<string>('');
   const [planNotes, setPlanNotes] = useState<string>('');
+
+  // Save validation
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const saveValidationError: string | null = saveAttempted
+    ? !plannedDate
+      ? 'Please select a date.'
+      : plannedStops.length === 0
+      ? 'Please add at least one stop.'
+      : null
+    : null;
 
   // Full 24-hour time slots: 00:00 → 23:00
   const timeSlots = Array.from({ length: 24 }, (_, i) =>
@@ -83,6 +114,18 @@ export default function PlanANight() {
   const endH = parseInt(endTime.split(':')[0]);
   const isTimeRangeValid =
     endH > startH || (startH >= 20 && endH <= 5 && endH !== startH);
+
+  const incrementPartySize = () => {
+    if (partySize >= 200) return;
+    setPartySizeDir(1);
+    setPartySize(p => p + 1);
+  };
+
+  const decrementPartySize = () => {
+    if (partySize <= 1) return;
+    setPartySizeDir(-1);
+    setPartySize(p => p - 1);
+  };
 
   const addStop = () => {
     if (!selectedVenueId || !venues) return;
@@ -126,21 +169,16 @@ export default function PlanANight() {
   };
 
   const handleSavePlan = async () => {
+    setSaveAttempted(true);
+
     if (!user) {
       toast.error('Please sign in to save your plan');
       navigate('/auth');
       return;
     }
 
-    if (!plannedDate) {
-      toast.error('Please select a date for your night out');
-      return;
-    }
-
-    if (plannedStops.length === 0) {
-      toast.error('Please add at least one venue to your plan');
-      return;
-    }
+    if (!plannedDate) return;
+    if (plannedStops.length === 0) return;
 
     // Validate party size
     if (partySize < 1 || partySize > 200) {
@@ -238,25 +276,68 @@ export default function PlanANight() {
               </Popover>
             </div>
 
-            {/* KAN-48 — Party Size */}
+            {/* KAN-48 — Party Size (premium stepper) */}
             <div className="space-y-2">
               <Label className="text-foreground flex items-center gap-1.5">
                 <Users className="h-4 w-4 text-primary" />
                 Party Size
               </Label>
-              <Input
-                type="number"
-                min={1}
-                max={200}
-                value={partySize}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value);
-                  if (!isNaN(v)) setPartySize(Math.max(1, Math.min(200, v)));
-                }}
-                className="bg-secondary border-border"
-                placeholder="e.g. 4"
-              />
-              <p className="text-xs text-muted-foreground">Number of people in your group</p>
+
+              <div className="flex items-center justify-between bg-secondary border border-border rounded-lg px-4 py-3">
+                {/* Decrement */}
+                <button
+                  type="button"
+                  onClick={decrementPartySize}
+                  disabled={partySize <= 1}
+                  className={cn(
+                    'w-8 h-8 rounded-md flex items-center justify-center transition-all duration-150',
+                    'text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-95',
+                    partySize <= 1 && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground'
+                  )}
+                  aria-label="Decrease party size"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+
+                {/* Animated number */}
+                <div
+                  className="relative overflow-hidden flex items-center justify-center"
+                  style={{ width: '4rem', height: '3rem' }}
+                >
+                  <AnimatePresence mode="popLayout" custom={partySizeDir}>
+                    <motion.span
+                      key={partySize}
+                      custom={partySizeDir}
+                      variants={numberVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      className="absolute font-display font-bold text-3xl text-foreground tabular-nums"
+                    >
+                      {partySize}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
+
+                {/* Increment */}
+                <button
+                  type="button"
+                  onClick={incrementPartySize}
+                  disabled={partySize >= 200}
+                  className={cn(
+                    'w-8 h-8 rounded-md flex items-center justify-center transition-all duration-150',
+                    'text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-95',
+                    partySize >= 200 && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground'
+                  )}
+                  aria-label="Increase party size"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                {partySize === 1 ? 'Just you' : `${partySize} people in your group`}
+              </p>
             </div>
 
             {/* KAN-48 — Preferred Vibe */}
@@ -467,9 +548,8 @@ export default function PlanANight() {
                       />
                     </div>
 
-                    {/* Summary & Save */}
+                    {/* Summary stats */}
                     <div className="mt-6 pt-6 border-t border-border">
-                      {/* Stats row */}
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div>
                           <p className="text-xs text-muted-foreground">Total Stops</p>
@@ -498,41 +578,55 @@ export default function PlanANight() {
                           </Badge>
                         </div>
                       )}
-
-                      <Button
-                        className="w-full gradient-primary"
-                        size="lg"
-                        onClick={handleSavePlan}
-                        disabled={
-                          createPlannedNight.isPending ||
-                          plannedStops.length === 0 ||
-                          !plannedDate
-                        }
-                      >
-                        {createPlannedNight.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving…
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Plan
-                          </>
-                        )}
-                      </Button>
-
-                      {!user && (
-                        <p className="text-xs text-center text-muted-foreground mt-3">
-                          <Link to="/auth" className="text-primary hover:underline">
-                            Sign in
-                          </Link>{' '}
-                          to save your plan
-                        </p>
-                      )}
                     </div>
                   </div>
                 )}
+
+                {/* ── Save Plan — always visible ── */}
+                <div className={cn('pt-6', plannedStops.length > 0 ? 'border-t border-border mt-0' : 'border-t border-border mt-6')}>
+                  <Button
+                    className="w-full gradient-primary"
+                    size="lg"
+                    onClick={handleSavePlan}
+                    disabled={createPlannedNight.isPending}
+                  >
+                    {createPlannedNight.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Plan
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Inline validation error */}
+                  <AnimatePresence>
+                    {saveValidationError && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -6, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, y: -6, height: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="text-xs text-destructive mt-2 text-center"
+                      >
+                        {saveValidationError}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+
+                  {!user && (
+                    <p className="text-xs text-center text-muted-foreground mt-3">
+                      <Link to="/auth" className="text-primary hover:underline">
+                        Sign in
+                      </Link>{' '}
+                      to save your plan
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

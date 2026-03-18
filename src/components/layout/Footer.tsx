@@ -27,11 +27,6 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/venues" className="hover:text-foreground transition-colors">
-                  Categories
-                </Link>
-              </li>
-              <li>
                 <Link to="/how-it-works" className="hover:text-foreground transition-colors">
                   How It Works
                 </Link>
