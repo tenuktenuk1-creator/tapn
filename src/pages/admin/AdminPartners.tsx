@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { notify } from '@/lib/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
@@ -98,19 +99,30 @@ function useApprovePartnerVenue() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ partnerVenueId, venueId }: { partnerVenueId: string; venueId: string }) => {
-      // Update partner_venues status to approved
+      // Fetch owner + venue name for notification
+      const { data: pv } = await supabase
+        .from('partner_venues')
+        .select('user_id, venues(name)')
+        .eq('id', partnerVenueId)
+        .single();
+
       const { error: pvError } = await supabase
         .from('partner_venues')
         .update({ status: 'approved' })
         .eq('id', partnerVenueId);
       if (pvError) throw pvError;
 
-      // Activate the venue so it shows publicly
       const { error: vError } = await supabase
         .from('venues')
         .update({ is_active: true })
         .eq('id', venueId);
       if (vError) throw vError;
+
+      // Notify the partner
+      if (pv?.user_id) {
+        const venueName = (pv.venues as { name?: string } | null)?.name ?? 'your venue';
+        void notify.venueApproved(pv.user_id, venueName, venueId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partner-venues'] });
@@ -127,19 +139,30 @@ function useRejectPartnerVenue() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ partnerVenueId, venueId }: { partnerVenueId: string; venueId: string }) => {
-      // Update partner_venues status to rejected
+      // Fetch owner + venue name for notification
+      const { data: pv } = await supabase
+        .from('partner_venues')
+        .select('user_id, venues(name)')
+        .eq('id', partnerVenueId)
+        .single();
+
       const { error: pvError } = await supabase
         .from('partner_venues')
         .update({ status: 'rejected' })
         .eq('id', partnerVenueId);
       if (pvError) throw pvError;
 
-      // Keep venue inactive
       const { error: vError } = await supabase
         .from('venues')
         .update({ is_active: false })
         .eq('id', venueId);
       if (vError) throw vError;
+
+      // Notify the partner
+      if (pv?.user_id) {
+        const venueName = (pv.venues as { name?: string } | null)?.name ?? 'your venue';
+        void notify.venueRejected(pv.user_id, venueName, venueId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partner-venues'] });
@@ -518,7 +541,7 @@ export default function AdminPartners() {
                                   size="sm"
                                   variant="outline"
                                   className="border-red-500/50 text-red-500 hover:bg-red-500/10"
-                                  onClick={() => rejectReqMutation.mutate(req.id)}
+                                  onClick={() => rejectReqMutation.mutate({ requestId: req.id, userId: req.user_id })}
                                   disabled={rejectReqMutation.isPending}
                                 >
                                   <X className="h-4 w-4 mr-1" /> Reject

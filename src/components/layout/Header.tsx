@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function Header() {
   const { user, isAdmin, isPartner, signOut } = useAuth();
@@ -74,6 +75,9 @@ export function Header() {
                 </Link>
               )}
 
+              {/* Notification bell — sits between role label and avatar */}
+              <NotificationBell />
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
@@ -124,13 +128,16 @@ export function Header() {
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <button
-          className="md:hidden p-2"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        {/* Mobile right-side controls */}
+        <div className="md:hidden flex items-center gap-1">
+          {user && <NotificationBell />}
+          <button
+            className="p-2"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}

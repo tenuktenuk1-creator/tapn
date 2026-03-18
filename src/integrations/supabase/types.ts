@@ -338,6 +338,46 @@ export type Database = {
         Relationships: []
       }
     }
+      notifications: {
+        Row: {
+          id:           string
+          user_id:      string
+          type:         string
+          title:        string
+          message:      string
+          is_read:      boolean
+          link:         string | null
+          entity_type:  string | null
+          entity_id:    string | null
+          created_at:   string
+        }
+        Insert: {
+          id?:          string
+          user_id:      string
+          type:         string
+          title:        string
+          message:      string
+          is_read?:     boolean
+          link?:        string | null
+          entity_type?: string | null
+          entity_id?:   string | null
+          created_at?:  string
+        }
+        Update: {
+          id?:          string
+          user_id?:     string
+          type?:        string
+          title?:       string
+          message?:     string
+          is_read?:     boolean
+          link?:        string | null
+          entity_type?: string | null
+          entity_id?:   string | null
+          created_at?:  string
+        }
+        Relationships: []
+      }
+    }
     Views: {
       public_venues: {
         Row: {

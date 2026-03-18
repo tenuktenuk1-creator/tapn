@@ -14,6 +14,7 @@ import { PublicVenue } from '@/types/venue';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { notify } from '@/lib/notifications';
 
 interface BookingFormProps {
   venue: PublicVenue;
@@ -124,6 +125,22 @@ export function BookingForm({ venue }: BookingFormProps) {
       }
 
       toast.success('Booking created successfully!');
+
+      // Notify the venue partner(s) about the new booking (fire-and-forget)
+      const bookingId = data?.booking?.id as string | undefined;
+      if (bookingId) {
+        supabase
+          .from('partner_venues')
+          .select('user_id')
+          .eq('venue_id', venue.id)
+          .eq('status', 'approved')
+          .then(({ data: partners }) => {
+            partners?.forEach(p => {
+              void notify.bookingReceived(p.user_id, venue.name, bookingId);
+            });
+          });
+      }
+
       navigate('/booking-success', {
         state: {
           venueName: venue.name,
