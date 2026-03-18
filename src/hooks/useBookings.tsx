@@ -58,8 +58,11 @@ export function useCancelBooking() {
 
   return useMutation({
     mutationFn: async (bookingId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
       const { data, error } = await supabase.functions.invoke('cancel-booking', {
         body: { bookingId },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (error || data?.error) throw new Error(data?.error || 'Failed to cancel booking');
       return data;
