@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Venue } from '@/types/venue';
+import { notify } from '@/lib/notifications';
 
 type PartnerRequestRecord = {
   id: string;
@@ -93,11 +94,25 @@ export function useConfirmBooking() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (bookingId: string) => {
+      // Fetch booking to get user_id + venue name for the notification
+      const { data: booking, error: bErr } = await supabase
+        .from('bookings')
+        .select('user_id, venue_id, venues(name)')
+        .eq('id', bookingId)
+        .single();
+      if (bErr) throw bErr;
+
       const { error } = await supabase
         .from('bookings')
         .update({ status: 'confirmed', updated_at: new Date().toISOString() })
         .eq('id', bookingId);
       if (error) throw error;
+
+      // Notify the customer
+      if (booking?.user_id) {
+        const venueName = (booking.venues as { name?: string } | null)?.name ?? 'your venue';
+        void notify.bookingConfirmed(booking.user_id, venueName, bookingId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partner-bookings'] });
@@ -121,11 +136,18 @@ export function useDeclineBooking() {
       reason?: string;
       status?: 'rejected' | 'cancelled';
     }) => {
+      // Fetch booking to get user_id + venue name for the notification
+      const { data: booking, error: bErr } = await supabase
+        .from('bookings')
+        .select('user_id, venue_id, venues(name)')
+        .eq('id', bookingId)
+        .single();
+      if (bErr) throw bErr;
+
       const update: Record<string, unknown> = {
         status,
         updated_at: new Date().toISOString(),
       };
-      // Append reason to admin_notes so it surfaces in the admin panel
       if (reason?.trim()) {
         update.admin_notes = `Partner reason: ${reason.trim()}`;
       }
@@ -134,6 +156,16 @@ export function useDeclineBooking() {
         .update(update)
         .eq('id', bookingId);
       if (error) throw error;
+
+      // Notify the customer
+      if (booking?.user_id) {
+        const venueName = (booking.venues as { name?: string } | null)?.name ?? 'your venue';
+        if (status === 'rejected') {
+          void notify.bookingRejected(booking.user_id, venueName, bookingId);
+        } else {
+          void notify.bookingCancelled(booking.user_id, venueName, bookingId);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partner-bookings'] });
@@ -246,6 +278,8 @@ export function useApprovePartnerRequest() {
         .from('user_roles')
         .upsert({ user_id: userId, role: 'partner' }, { onConflict: 'user_id' });
       if (roleErr) throw roleErr;
+      // Notify the applicant
+      void notify.partnerApproved(userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });
@@ -258,12 +292,14 @@ export function useApprovePartnerRequest() {
 export function useRejectPartnerRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (requestId: string) => {
+    mutationFn: async ({ requestId, userId }: { requestId: string; userId: string }) => {
       const { error } = await supabase
         .from('partner_requests')
         .update({ status: 'rejected', updated_at: new Date().toISOString() })
         .eq('id', requestId);
       if (error) throw error;
+      // Notify the applicant
+      void notify.partnerRejected(userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-partner-requests'] });

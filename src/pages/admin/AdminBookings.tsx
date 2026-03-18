@@ -58,6 +58,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
+import { notify } from '@/lib/notifications';
 
 type BookingStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 type SortOption = 'date' | 'created_at' | 'start_time';
@@ -207,6 +208,9 @@ export default function AdminBookings() {
   const handleCancelBooking = async () => {
     if (!confirmCancelId) return;
 
+    // Grab booking info before cancelling so we can notify the right user
+    const target = bookings.find(b => b.id === confirmCancelId);
+
     setCancellingId(confirmCancelId);
     setConfirmCancelId(null);
 
@@ -221,6 +225,14 @@ export default function AdminBookings() {
         toast.success('Booking cancelled successfully');
         fetchBookings();
         queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+        // Notify customer
+        if (target?.user_id) {
+          void notify.bookingCancelled(
+            target.user_id,
+            target.venues?.name ?? 'your venue',
+            confirmCancelId,
+          );
+        }
       }
     } catch {
       toast.error('Failed to cancel booking');
@@ -230,6 +242,7 @@ export default function AdminBookings() {
   };
 
   const handleConfirmBooking = async (bookingId: string) => {
+    const target = bookings.find(b => b.id === bookingId);
     const { error } = await supabase
       .from('bookings')
       .update({ status: 'confirmed', updated_at: new Date().toISOString() })
@@ -240,10 +253,19 @@ export default function AdminBookings() {
       toast.success('Booking confirmed');
       fetchBookings();
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+      // Notify customer
+      if (target?.user_id) {
+        void notify.bookingConfirmed(
+          target.user_id,
+          target.venues?.name ?? 'your venue',
+          bookingId,
+        );
+      }
     }
   };
 
   const handleRejectBooking = async (bookingId: string) => {
+    const target = bookings.find(b => b.id === bookingId);
     const { error } = await supabase
       .from('bookings')
       .update({ status: 'rejected', updated_at: new Date().toISOString() })
@@ -254,6 +276,14 @@ export default function AdminBookings() {
       toast.success('Booking rejected');
       fetchBookings();
       queryClient.invalidateQueries({ queryKey: ['admin-bookings'] });
+      // Notify customer
+      if (target?.user_id) {
+        void notify.bookingRejected(
+          target.user_id,
+          target.venues?.name ?? 'your venue',
+          bookingId,
+        );
+      }
     }
   };
 
