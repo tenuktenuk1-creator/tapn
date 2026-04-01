@@ -1,637 +1,683 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Plus,
-  Trash2,
-  Clock,
-  MapPin,
-  Calendar as CalendarIcon,
-  Moon,
-  Sparkles,
-  ChevronRight,
-  ChevronUp,
-  ChevronDown,
-  Save,
-  Loader2,
-  Users,
-  Zap,
+  Search, Plus, Trash2, Clock, MapPin,
+  Share2, Zap, Music, Coffee, Star,
+  CreditCard, ChevronRight, CalendarDays,
 } from 'lucide-react';
 import { useVenues } from '@/hooks/useVenues';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePlannedNight } from '@/hooks/usePlannedNights';
 import { PublicVenue, venueTypeLabels } from '@/types/venue';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageTransition } from '@/components/ui/page-transition';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PlannedStop {
   id: string;
   venue: PublicVenue;
-  startTime: string;
-  endTime: string;
+  arrivalTime: string;
+  role: string;
 }
 
-// KAN-48: Vibe options
-const VIBE_OPTIONS = [
-  { value: 'chill', label: '😌 Chill & Relaxed' },
-  { value: 'social', label: '🎉 Social & Lively' },
-  { value: 'romantic', label: '🌹 Romantic' },
-  { value: 'competitive', label: '🏆 Competitive / Game Night' },
-  { value: 'wild', label: '🔥 Wild Night Out' },
-  { value: 'classy', label: '🥂 Classy & Upscale' },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Party size number slide variants (direction-aware)
-const numberVariants = {
-  enter: (dir: 1 | -1) => ({
-    y: dir === 1 ? -18 : 18,
-    opacity: 0,
-  }),
-  center: {
-    y: 0,
-    opacity: 1,
-    transition: { duration: 0.18, ease: [0.25, 0.46, 0.45, 0.94] },
-  },
-  exit: (dir: 1 | -1) => ({
-    y: dir === 1 ? 18 : -18,
-    opacity: 0,
-    transition: { duration: 0.12, ease: [0.55, 0, 1, 0.45] },
-  }),
+const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+function toMinutes(t: string) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+function minutesToTime(min: number) {
+  const n = ((min % 1440) + 1440) % 1440;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+}
+function formatTime12(t: string) {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour}:${m.toString().padStart(2,'0')} ${ampm}`;
+}
+
+/** 30-min slots within venue opening hours for today */
+function getArrivalSlots(venue: PublicVenue, date: Date): string[] {
+  if (!venue.opening_hours || !Object.keys(venue.opening_hours).length) {
+    return Array.from({ length: 28 }, (_, i) => minutesToTime(10 * 60 + i * 30));
+  }
+  const day = DAYS[date.getDay()];
+  const hours = venue.opening_hours[day] as { open: string; close: string } | undefined;
+  if (!hours || hours.open === 'closed' || hours.close === 'closed') return [];
+
+  const openMin  = toMinutes(hours.open);
+  const closeMin = toMinutes(hours.close);
+  const isCross  = closeMin <= openMin;
+  const dur      = isCross ? (1440 - openMin) + closeMin : closeMin - openMin;
+  const count    = Math.max(0, Math.floor(dur / 30) - 1);
+  return Array.from({ length: count }, (_, i) => minutesToTime(openMin + i * 30));
+}
+
+function formatHour(t: string) {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return m === 0 ? `${hour}${ampm}` : `${hour}:${m.toString().padStart(2,'0')}${ampm}`;
+}
+
+function getOpenHours(venue: PublicVenue, date: Date): string {
+  if (!venue.opening_hours) return '';
+  const day = DAYS[date.getDay()];
+  const h = venue.opening_hours[day] as { open: string; close: string } | undefined;
+  if (!h || h.open === 'closed') return 'Closed today';
+  return `${formatHour(h.open)}–${formatHour(h.close)}`;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STOP_ICONS = [Music, Star, Coffee, Zap, Music, Star, Coffee];
+const STOP_ROLES = ['First stop', 'Chill session', 'Main event', 'After party', 'Nightcap', 'Warm-up', 'Late night'];
+
+const TYPE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+  lounge:       { bg: 'bg-purple-500/15', text: 'text-purple-400', dot: 'bg-purple-400' },
+  karaoke:      { bg: 'bg-pink-500/15',   text: 'text-pink-400',   dot: 'bg-pink-400'   },
+  cafe:         { bg: 'bg-orange-500/15', text: 'text-orange-400', dot: 'bg-orange-400' },
+  pool_snooker: { bg: 'bg-blue-500/15',   text: 'text-blue-400',   dot: 'bg-blue-400'   },
 };
 
+const FILTER_TAGS = [
+  { label: '✦ Open Now',  key: 'open'         },
+  { label: 'Lounge',      key: 'lounge'        },
+  { label: 'Karaoke',     key: 'karaoke'       },
+  { label: 'Cafe',        key: 'cafe'          },
+  { label: 'Billiards',   key: 'pool_snooker'  },
+];
+
+// ─── Panel header ─────────────────────────────────────────────────────────────
+
+function PanelLabel({ step, label, active }: { step: number; label: string; active: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <div className={cn(
+        'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors duration-300',
+        active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+      )}>
+        {step}
+      </div>
+      <span className={cn(
+        'text-xs font-bold tracking-[0.18em] uppercase transition-colors duration-300',
+        active ? 'text-foreground' : 'text-muted-foreground'
+      )}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function PlanANight() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const navigate   = useNavigate();
+  const { user }   = useAuth();
   const { data: venues, isLoading } = useVenues();
   const createPlannedNight = useCreatePlannedNight();
 
-  const [plannedStops, setPlannedStops] = useState<PlannedStop[]>([]);
-  const [selectedVenueId, setSelectedVenueId] = useState<string>('');
-  const [startTime, setStartTime] = useState('20:00');
-  const [endTime, setEndTime] = useState('22:00');
-  const [plannedDate, setPlannedDate] = useState<Date | undefined>(undefined);
+  const today = addDays(new Date(), 0);
 
-  // KAN-48: New fields
-  const [partySize, setPartySize] = useState<number>(1);
-  const [partySizeDir, setPartySizeDir] = useState<1 | -1>(1);
-  const [preferredVibe, setPreferredVibe] = useState<string>('');
-  const [planNotes, setPlanNotes] = useState<string>('');
+  const [query,         setQuery]         = useState('');
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [selectedVenue, setSelectedVenue] = useState<PublicVenue | null>(null);
+  const [selectedTime,  setSelectedTime]  = useState<string>('');
+  const [payMethod,     setPayMethod]     = useState<'qpay' | 'card'>('qpay');
+  const [confirmed,     setConfirmed]     = useState(false);
+  const [plannedStops,  setPlannedStops]  = useState<PlannedStop[]>([]);
 
-  // Save validation
-  const [saveAttempted, setSaveAttempted] = useState(false);
-  const saveValidationError: string | null = saveAttempted
-    ? !plannedDate
-      ? 'Please select a date.'
-      : plannedStops.length === 0
-      ? 'Please add at least one stop.'
-      : null
-    : null;
-
-  // Full 24-hour time slots: 00:00 → 23:00
-  const timeSlots = Array.from({ length: 24 }, (_, i) =>
-    `${i.toString().padStart(2, '00')}:00`
+  const timeSlots = useMemo(
+    () => selectedVenue ? getArrivalSlots(selectedVenue, today) : [],
+    [selectedVenue]
   );
 
-  // Midnight-crossing support: 23:00 → 01:00 is valid (2h span)
-  const startH = parseInt(startTime.split(':')[0]);
-  const endH = parseInt(endTime.split(':')[0]);
-  const isTimeRangeValid =
-    endH > startH || (startH >= 20 && endH <= 5 && endH !== startH);
+  const filteredVenues = useMemo(() => {
+    if (!venues) return [];
+    return venues.filter(v => {
+      const matchesQuery  = !query || v.name.toLowerCase().includes(query.toLowerCase());
+      const matchesFilter = activeFilters.length === 0 || activeFilters.every(f => {
+        if (f === 'open') return true;
+        return v.venue_type === f;
+      });
+      return matchesQuery && matchesFilter;
+    });
+  }, [venues, query, activeFilters]);
 
-  const incrementPartySize = () => {
-    if (partySize >= 200) return;
-    setPartySizeDir(1);
-    setPartySize(p => p + 1);
-  };
-
-  const decrementPartySize = () => {
-    if (partySize <= 1) return;
-    setPartySizeDir(-1);
-    setPartySize(p => p - 1);
-  };
-
-  const addStop = () => {
-    if (!selectedVenueId || !venues) return;
-    const venue = venues.find(v => v.id === selectedVenueId);
-    if (!venue) return;
-
-    const newStop: PlannedStop = {
-      id: crypto.randomUUID(),
-      venue,
-      startTime,
-      endTime,
-    };
-
-    setPlannedStops([...plannedStops, newStop]);
-    setSelectedVenueId('');
-
-    // Auto-advance: next start = current end, next end = +2h (wraps past midnight)
-    const curEndH = parseInt(endTime.split(':')[0]);
-    const nextEndH = (curEndH + 2) % 24;
-    setStartTime(endTime);
-    setEndTime(`${nextEndH.toString().padStart(2, '0')}:00`);
-  };
-
-  const removeStop = (id: string) => {
-    setPlannedStops(plannedStops.filter(stop => stop.id !== id));
-  };
-
-  // Duration-aware of midnight wrapping: 23:00→01:00 = 2h (not -22h)
-  const calcStopDuration = (start: string, end: string): number => {
-    const s = parseInt(start.split(':')[0]);
-    const e = parseInt(end.split(':')[0]);
-    return e > s ? e - s : 24 - s + e;
-  };
-
-  const calculateTotalDuration = () => {
-    if (plannedStops.length === 0) return 0;
-    return plannedStops.reduce(
-      (total, stop) => total + calcStopDuration(stop.startTime, stop.endTime),
-      0
+  const toggleFilter = (key: string) => {
+    setActiveFilters(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   };
 
-  const handleSavePlan = async () => {
-    setSaveAttempted(true);
+  const selectVenue = (venue: PublicVenue) => {
+    setSelectedVenue(venue);
+    setSelectedTime('');
+    setConfirmed(false);
+  };
 
-    if (!user) {
-      toast.error('Please sign in to save your plan');
-      navigate('/auth');
-      return;
-    }
+  const confirmStop = () => {
+    if (!selectedVenue || !selectedTime) return;
+    const idx = plannedStops.length;
+    setPlannedStops(prev => [...prev, {
+      id:          crypto.randomUUID(),
+      venue:       selectedVenue,
+      arrivalTime: selectedTime,
+      role:        STOP_ROLES[idx % STOP_ROLES.length],
+    }]);
+    setConfirmed(true);
+    toast.success(`${selectedVenue.name} added to your plan!`);
+  };
 
-    if (!plannedDate) return;
-    if (plannedStops.length === 0) return;
+  const removeStop = (id: string) => {
+    setPlannedStops(prev => prev.filter(s => s.id !== id));
+  };
 
-    // Validate party size
-    if (partySize < 1 || partySize > 200) {
-      toast.error('Party size must be between 1 and 200');
-      return;
-    }
-
-    // Auto-generate name based on date
-    const name = `Night Out - ${format(plannedDate, 'MMM d')}`;
-
-    // Build notes string with KAN-48 metadata
-    const metaLines: string[] = [];
-    if (partySize > 1) metaLines.push(`Party size: ${partySize}`);
-    if (preferredVibe) {
-      const vibeLabel = VIBE_OPTIONS.find(v => v.value === preferredVibe)?.label ?? preferredVibe;
-      metaLines.push(`Vibe: ${vibeLabel}`);
-    }
-    if (planNotes.trim()) metaLines.push(`Notes: ${planNotes.trim()}`);
-    const combinedNotes = metaLines.join(' · ');
-
+  const handleSave = async () => {
+    if (!user) { navigate('/auth'); return; }
+    if (plannedStops.length === 0) { toast.error('Add at least one stop'); return; }
     try {
       await createPlannedNight.mutateAsync({
-        name,
-        planned_date: format(plannedDate, 'yyyy-MM-dd'),
-        notes: combinedNotes || undefined,
-        stops: plannedStops.map((stop, index) => ({
-          venue_id: stop.venue.id,
-          start_time: stop.startTime,
-          end_time: stop.endTime,
-          order_index: index,
+        name: `Night Out - ${format(today, 'MMM d')}`,
+        planned_date: format(today, 'yyyy-MM-dd'),
+        stops: plannedStops.map((s, i) => ({
+          venue_id:    s.venue.id,
+          start_time:  s.arrivalTime,
+          end_time:    minutesToTime(toMinutes(s.arrivalTime) + 120),
+          order_index: i,
         })),
       });
-
-      toast.success('Night plan saved successfully!');
+      toast.success('Night plan saved!');
       navigate('/profile');
-    } catch (error) {
-      console.error('Error saving plan:', error);
+    } catch {
       toast.error('Failed to save plan');
     }
   };
 
-  const venueTypeColorMap: Record<string, string> = {
-    cafe: 'bg-orange-500',
-    karaoke: 'bg-pink-500',
-    pool_snooker: 'bg-blue-500',
-    lounge: 'bg-purple-500',
-  };
+  const panelStep = selectedVenue ? (plannedStops.length > 0 ? 2 : 1) : 0;
 
   return (
     <Layout>
       <PageTransition variant="rise" distance={48}>
-      <div className="container py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Moon className="h-8 w-8 text-primary" />
-            <h1 className="font-display text-3xl md:text-4xl font-bold">
-              Plan a <span className="text-gradient">Night</span>
-            </h1>
-          </div>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            Create your perfect night out. Set your vibe, group size, and build a
-            venue timeline — all in one place.
-          </p>
-        </div>
+        <div className="min-h-screen bg-background">
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* ── Left Panel ── */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Date Picker */}
-            <div className="space-y-2">
-              <Label className="text-foreground">Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal bg-secondary border-border',
-                      !plannedDate && 'text-muted-foreground'
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {plannedDate ? format(plannedDate, 'PPP') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={plannedDate}
-                    onSelect={setPlannedDate}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* KAN-48 — Party Size (premium stepper) */}
-            <div className="space-y-2">
-              <Label className="text-foreground flex items-center gap-1.5">
-                <Users className="h-4 w-4 text-primary" />
-                Party Size
-              </Label>
-
-              <div className="flex items-center justify-between bg-secondary border border-border rounded-lg px-4 py-3">
-                {/* Decrement */}
-                <button
-                  type="button"
-                  onClick={decrementPartySize}
-                  disabled={partySize <= 1}
-                  className={cn(
-                    'w-8 h-8 rounded-md flex items-center justify-center transition-all duration-150',
-                    'text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-95',
-                    partySize <= 1 && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground'
-                  )}
-                  aria-label="Decrease party size"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-
-                {/* Animated number */}
-                <div
-                  className="relative overflow-hidden flex items-center justify-center"
-                  style={{ width: '4rem', height: '3rem' }}
-                >
-                  <AnimatePresence mode="popLayout" custom={partySizeDir}>
-                    <motion.span
-                      key={partySize}
-                      custom={partySizeDir}
-                      variants={numberVariants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      className="absolute font-display font-bold text-3xl text-foreground tabular-nums"
-                    >
-                      {partySize}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-
-                {/* Increment */}
-                <button
-                  type="button"
-                  onClick={incrementPartySize}
-                  disabled={partySize >= 200}
-                  className={cn(
-                    'w-8 h-8 rounded-md flex items-center justify-center transition-all duration-150',
-                    'text-muted-foreground hover:text-foreground hover:bg-white/5 active:scale-95',
-                    partySize >= 200 && 'opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground'
-                  )}
-                  aria-label="Increase party size"
-                >
-                  <ChevronUp className="h-4 w-4" />
-                </button>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {partySize === 1 ? 'Just you' : `${partySize} people in your group`}
-              </p>
-            </div>
-
-            {/* KAN-48 — Preferred Vibe */}
-            <div className="space-y-2">
-              <Label className="text-foreground flex items-center gap-1.5">
-                <Zap className="h-4 w-4 text-primary" />
-                Preferred Vibe
-                <span className="text-muted-foreground font-normal text-xs">(optional)</span>
-              </Label>
-              <Select value={preferredVibe} onValueChange={setPreferredVibe}>
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Pick a vibe…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {VIBE_OPTIONS.map(({ value, label }) => (
-                    <SelectItem key={value} value={value}>
+          {/* ── Step bar ──────────────────────────────────────────────────── */}
+          <div className="border-b border-border bg-background/90 backdrop-blur-md sticky top-16 z-30">
+            <div className="container flex items-center justify-center py-3">
+              {(['Discover', 'Book', 'Plan'] as const).map((label, i) => (
+                <div key={label} className="flex items-center">
+                  <div className="flex items-center gap-2 px-4">
+                    <div className={cn(
+                      'w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center transition-all duration-300',
+                      panelStep >= i
+                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/40'
+                        : 'bg-muted text-muted-foreground'
+                    )}>
+                      {i + 1}
+                    </div>
+                    <span className={cn(
+                      'text-xs font-semibold tracking-widest uppercase transition-colors duration-300',
+                      panelStep >= i ? 'text-foreground' : 'text-muted-foreground'
+                    )}>
                       {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </span>
+                  </div>
+                  {i < 2 && (
+                    <div className="flex items-center">
+                      <div className={cn(
+                        'w-12 h-px transition-colors duration-500',
+                        panelStep > i ? 'bg-primary' : 'bg-border'
+                      )} />
+                      <ChevronRight className={cn(
+                        'h-3 w-3 -ml-1 transition-colors duration-500',
+                        panelStep > i ? 'text-primary' : 'text-border'
+                      )} />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-
-            {/* Add Stop Card */}
-            <Card className="sticky top-24 card-dark border-border">
-              <CardHeader>
-                <CardTitle className="font-display flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-primary" />
-                  Add a Stop
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Select Venue</Label>
-                  <Select value={selectedVenueId} onValueChange={setSelectedVenueId}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Choose a venue…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoading ? (
-                        <div className="py-2 px-3 text-sm text-muted-foreground">Loading…</div>
-                      ) : venues && venues.length > 0 ? (
-                        venues.map(venue => (
-                          <SelectItem key={venue.id} value={venue.id}>
-                            <div className="flex items-center gap-2">
-                              <span>{venue.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({venueTypeLabels[venue.venue_type]})
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="py-2 px-3 text-sm text-muted-foreground">No venues available</div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Start Time</Label>
-                    <Select value={startTime} onValueChange={setStartTime}>
-                      <SelectTrigger className="bg-secondary border-border">
-                        <Clock className="mr-2 h-4 w-4" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>End Time</Label>
-                    <Select value={endTime} onValueChange={setEndTime}>
-                      <SelectTrigger className="bg-secondary border-border">
-                        <Clock className="mr-2 h-4 w-4" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!isTimeRangeValid && (
-                      <p className="text-xs text-destructive">Invalid time range</p>
-                    )}
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full gradient-primary"
-                  onClick={addStop}
-                  disabled={!selectedVenueId || !isTimeRangeValid}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add to Plan
-                </Button>
-
-                <p className="text-xs text-center text-muted-foreground">
-                  Add venues in the order you want to visit them
-                </p>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* ── Timeline ── */}
-          <div className="lg:col-span-2">
-            <Card className="card-dark border-border">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="font-display flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-primary" />
-                  Your Night Timeline
-                </CardTitle>
-                {plannedStops.length > 0 && (
-                  <Badge variant="secondary">
-                    {calculateTotalDuration()} hours total
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent>
-                {plannedStops.length === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium mb-2">No stops planned yet</p>
-                    <p className="text-sm">
-                      Select venues from the left panel to build your perfect night out
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {plannedStops.map((stop, index) => (
-                      <div key={stop.id} className="relative">
-                        {/* Connector line */}
-                        {index < plannedStops.length - 1 && (
-                          <div className="absolute left-6 top-full h-4 w-0.5 bg-border" />
+          {/* ── Three panels ──────────────────────────────────────────────── */}
+          <div className="container py-6">
+            <div className="grid lg:grid-cols-3 gap-5 h-[calc(100vh-172px)]">
+
+              {/* ── LEFT: DISCOVER ──────────────────────────────────────── */}
+              <div className="flex flex-col overflow-hidden">
+                <PanelLabel step={1} label="Discover" active={panelStep >= 0} />
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {FILTER_TAGS.map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => toggleFilter(f.key)}
+                      className={cn(
+                        'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200',
+                        activeFilters.includes(f.key)
+                          ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/30'
+                          : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/30'
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search */}
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search clubs, bars, lounges..."
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
+                  />
+                </div>
+
+                {/* Venue list */}
+                <div
+                  className="flex-1 overflow-y-auto space-y-2"
+                  style={{ scrollbarWidth: 'none' }}
+                >
+                  {isLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="h-20 rounded-2xl bg-card animate-pulse" />
+                    ))
+                  ) : filteredVenues.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                      No venues found
+                    </div>
+                  ) : filteredVenues.map(venue => {
+                    const isActive = selectedVenue?.id === venue.id;
+                    const isAdded  = plannedStops.some(s => s.venue.id === venue.id);
+                    const hours    = getOpenHours(venue, today);
+                    const isClosed = hours === 'Closed today';
+                    const statusLabel = isClosed ? 'Closed'
+                      : venue.busy_status === 'busy' ? 'Busy'
+                      : venue.busy_status === 'moderate' ? 'Popular' : 'Open';
+                    const statusColor = isClosed ? 'text-red-400'
+                      : venue.busy_status === 'busy' ? 'text-yellow-400'
+                      : venue.busy_status === 'moderate' ? 'text-pink-400' : 'text-green-400';
+
+                    return (
+                      <motion.button
+                        key={venue.id}
+                        onClick={() => selectVenue(venue)}
+                        whileTap={{ scale: 0.985 }}
+                        className={cn(
+                          'w-full text-left rounded-2xl px-4 py-3.5 border transition-all duration-200',
+                          isActive
+                            ? 'bg-primary/10 border-primary/40'
+                            : 'bg-card border-border hover:border-primary/25'
+                        )}
+                      >
+                        {/* Row 1: name + status */}
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold text-[15px] text-foreground truncate leading-tight">
+                            {venue.name}
+                          </p>
+                          <span className={cn('text-xs font-semibold flex-shrink-0', statusColor)}>
+                            {statusLabel}
+                          </span>
+                        </div>
+
+                        {/* Row 2: type · hours */}
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {venueTypeLabels[venue.venue_type]}
+                          {hours && ` · ${hours}`}
+                        </p>
+
+                        {/* Row 3: price */}
+                        {venue.price_per_hour && (
+                          <p className="text-[15px] font-bold text-primary mt-1.5">
+                            ₮{venue.price_per_hour.toLocaleString()}
+                          </p>
                         )}
 
-                        <div className="rounded-xl p-4 flex items-center gap-4 bg-secondary/50 border border-border">
-                          {/* Order number */}
-                          <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold">
-                            {index + 1}
+                        {isAdded && (
+                          <div className="mt-2 flex items-center gap-1.5 text-xs text-primary/70 font-medium">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                            In your plan
+                          </div>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── CENTER: BOOK ────────────────────────────────────────── */}
+              <div className="flex flex-col overflow-hidden">
+                <PanelLabel step={2} label="Book" active={panelStep >= 1} />
+
+                <div className="flex-1 overflow-y-auto">
+                  {!selectedVenue ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-3">
+                      <div className="w-20 h-20 rounded-3xl bg-card border border-border flex items-center justify-center">
+                        <MapPin className="h-8 w-8 opacity-20" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground/70">No venue selected</p>
+                        <p className="text-xs mt-1 opacity-50">Pick one from Discover</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Selected venue card */}
+                      <div className="rounded-2xl border border-primary/20 overflow-hidden">
+                        {/* Header gradient */}
+                        <div className="bg-gradient-to-br from-primary/25 via-primary/10 to-transparent p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={cn(
+                              'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0',
+                              (TYPE_COLORS[selectedVenue.venue_type] ?? TYPE_COLORS.lounge).bg
+                            )}>
+                              {selectedVenue.venue_type === 'karaoke' ? '🎤'
+                                : selectedVenue.venue_type === 'cafe' ? '☕'
+                                : selectedVenue.venue_type === 'pool_snooker' ? '🎱'
+                                : '🍸'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-display font-bold text-base text-foreground leading-tight">
+                                {selectedVenue.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {venueTypeLabels[selectedVenue.venue_type]}
+                                {selectedVenue.city && ` · ${selectedVenue.city}`}
+                              </p>
+                            </div>
                           </div>
 
-                          {/* Venue info */}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-display font-semibold text-foreground">
-                                {stop.venue.name}
-                              </h4>
-                              <Badge
-                                className={`${venueTypeColorMap[stop.venue.venue_type]} text-white border-0 text-xs`}
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            {selectedVenue.price_per_hour && (
+                              <div className="bg-black/20 rounded-xl px-3 py-2">
+                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Price</p>
+                                <p className="text-sm font-bold text-primary">
+                                  ₮{selectedVenue.price_per_hour.toLocaleString()}
+                                  <span className="text-xs font-normal text-muted-foreground">/цаг</span>
+                                </p>
+                              </div>
+                            )}
+                            <div className="bg-black/20 rounded-xl px-3 py-2">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Hours</p>
+                              <p className="text-sm font-semibold text-foreground/90 text-xs">
+                                {getOpenHours(selectedVenue, today)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Address strip */}
+                        {selectedVenue.address && (
+                          <div className="px-4 py-2 border-t border-border/50 bg-card/50 flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground truncate">{selectedVenue.address}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Arrival time */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Choose Arrival Time
+                          </p>
+                        </div>
+                        {timeSlots.length === 0 ? (
+                          <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-center">
+                            <p className="text-sm text-red-400 font-medium">Closed today</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Try selecting another venue</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {timeSlots.map(t => (
+                              <button
+                                key={t}
+                                onClick={() => { setSelectedTime(t); setConfirmed(false); }}
+                                className={cn(
+                                  'px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-150',
+                                  selectedTime === t
+                                    ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/30'
+                                    : 'bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                )}
                               >
-                                {venueTypeLabels[stop.venue.venue_type]}
-                              </Badge>
+                                {formatTime12(t)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Payment */}
+                      <AnimatePresence>
+                        {selectedTime && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="space-y-3"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-2.5">
+                                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Payment
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  onClick={() => setPayMethod('qpay')}
+                                  className={cn(
+                                    'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-all duration-150',
+                                    payMethod === 'qpay'
+                                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                                      : 'bg-card border-border text-muted-foreground hover:border-primary/30'
+                                  )}
+                                >
+                                  <Zap className="h-4 w-4" />
+                                  QPay
+                                </button>
+                                <button
+                                  onClick={() => setPayMethod('card')}
+                                  className={cn(
+                                    'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-all duration-150',
+                                    payMethod === 'card'
+                                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                                      : 'bg-card border-border text-muted-foreground hover:border-primary/30'
+                                  )}
+                                >
+                                  <CreditCard className="h-4 w-4" />
+                                  Card
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {stop.startTime} – {stop.endTime}
-                                <span className="text-xs text-muted-foreground/60">
-                                  ({calcStopDuration(stop.startTime, stop.endTime)}h)
+
+                            {/* Summary row */}
+                            {selectedVenue.price_per_hour && (
+                              <div className="flex justify-between items-center px-4 py-3 rounded-xl bg-card border border-border">
+                                <span className="text-sm text-muted-foreground">2 hours estimate</span>
+                                <span className="text-sm font-bold text-foreground">
+                                  ₮{(selectedVenue.price_per_hour * 2).toLocaleString()}
                                 </span>
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {stop.venue.city}
-                              </span>
-                            </div>
-                          </div>
+                              </div>
+                            )}
 
-                          {/* Actions */}
-                          <div className="flex items-center gap-2">
-                            <Link to={`/venues/${stop.venue.id}`}>
-                              <Button variant="ghost" size="sm">
-                                View <ChevronRight className="ml-1 h-4 w-4" />
-                              </Button>
-                            </Link>
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => removeStop(stop.id)}
+                              className="w-full gradient-primary"
+                              size="lg"
+                              disabled={confirmed}
+                              onClick={confirmStop}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {confirmed ? (
+                                <span className="flex items-center gap-2">
+                                  <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-xs">✓</div>
+                                  Added to Night Plan
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  Add to Night Plan
+                                </span>
+                              )}
                             </Button>
-                          </div>
+
+                            {confirmed && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex items-center gap-2.5 rounded-xl bg-green-500/10 border border-green-500/25 px-4 py-3"
+                              >
+                                <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold">✓</div>
+                                <div>
+                                  <p className="text-sm text-green-400 font-semibold">Confirmed for {formatTime12(selectedTime)}</p>
+                                  <p className="text-xs text-muted-foreground">Show confirmation at the door</p>
+                                </div>
+                              </motion.div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── RIGHT: NIGHT PLAN ─────────────────────────────────── */}
+              <div className="flex flex-col overflow-hidden">
+                <PanelLabel step={3} label="Night Plan" active={panelStep >= 2} />
+
+                {/* Date badge */}
+                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-card border border-border">
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {format(today, 'EEEE, MMM d')}
+                  </span>
+                  {plannedStops.length > 0 && (
+                    <span className="ml-auto text-xs font-bold text-primary">
+                      {plannedStops.length} {plannedStops.length === 1 ? 'stop' : 'stops'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto">
+                  {plannedStops.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center gap-4">
+                      <div className="relative">
+                        <div className="w-20 h-20 rounded-3xl bg-card border border-border flex items-center justify-center">
+                          <Music className="h-8 w-8 opacity-15" />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                          <Plus className="h-3.5 w-3.5 text-primary opacity-60" />
                         </div>
                       </div>
-                    ))}
-
-                    {/* KAN-48 — Notes section */}
-                    <div className="mt-4 space-y-2">
-                      <Label className="text-foreground text-sm">
-                        Additional Notes
-                        <span className="text-muted-foreground font-normal ml-1">(optional)</span>
-                      </Label>
-                      <Textarea
-                        placeholder="Dietary requirements, special requests, anything the venues should know…"
-                        value={planNotes}
-                        onChange={(e) => setPlanNotes(e.target.value)}
-                        rows={3}
-                        className="resize-none bg-secondary border-border text-sm"
-                      />
-                    </div>
-
-                    {/* Summary stats */}
-                    <div className="mt-6 pt-6 border-t border-border">
-                      <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Total Stops</p>
-                          <p className="font-display font-semibold text-lg">{plannedStops.length}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Duration</p>
-                          <p className="font-display font-semibold text-lg text-primary">
-                            {calculateTotalDuration()}h
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Party</p>
-                          <p className="font-display font-semibold text-lg">
-                            {partySize} {partySize === 1 ? 'person' : 'people'}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground/60">Your night is empty</p>
+                        <p className="text-xs mt-1 text-muted-foreground opacity-60">
+                          Select a venue and time to begin
+                        </p>
                       </div>
-
-                      {/* Vibe badge */}
-                      {preferredVibe && (
-                        <div className="mb-4">
-                          <Badge variant="outline" className="text-xs">
-                            <Zap className="h-3 w-3 mr-1 text-primary" />
-                            {VIBE_OPTIONS.find(v => v.value === preferredVibe)?.label}
-                          </Badge>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-0 pb-2">
+                      {plannedStops.map((stop, i) => {
+                        const Icon = STOP_ICONS[i % STOP_ICONS.length];
+                        const isLast = i === plannedStops.length - 1;
+                        const typeStyle = TYPE_COLORS[stop.venue.venue_type] ?? TYPE_COLORS.lounge;
 
-                {/* ── Save Plan — always visible ── */}
-                <div className={cn('pt-6', plannedStops.length > 0 ? 'border-t border-border mt-0' : 'border-t border-border mt-6')}>
+                        return (
+                          <motion.div
+                            key={stop.id}
+                            initial={{ opacity: 0, x: 16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 28 }}
+                            className="relative flex gap-3"
+                          >
+                            {/* Timeline line */}
+                            {!isLast && (
+                              <div className="absolute left-[18px] top-[42px] bottom-0 w-px bg-gradient-to-b from-primary/30 to-border" />
+                            )}
+
+                            {/* Icon node */}
+                            <div className={cn(
+                              'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-2 border-2 z-10',
+                              typeStyle.bg,
+                              `border-${typeStyle.dot.replace('bg-', '')}`
+                            )}>
+                              <Icon className={cn('h-3.5 w-3.5', typeStyle.text)} />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0 pb-5">
+                              <div className="bg-card border border-border rounded-2xl px-3 py-2.5 group relative">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-xs text-muted-foreground font-medium">
+                                      {formatTime12(stop.arrivalTime)}
+                                      <span className="mx-1.5 opacity-40">·</span>
+                                      <span className={typeStyle.text}>{stop.role}</span>
+                                    </p>
+                                    <p className="font-semibold text-sm text-foreground truncate mt-0.5">
+                                      {stop.venue.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {venueTypeLabels[stop.venue.venue_type]}
+                                      {stop.venue.city && ` · ${stop.venue.city}`}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => removeStop(stop.id)}
+                                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all duration-150 flex-shrink-0 p-0.5"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="space-y-2 pt-3 border-t border-border">
+                  <button
+                    onClick={() => { setSelectedVenue(null); setConfirmed(false); }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-150"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add another stop
+                  </button>
                   <Button
                     className="w-full gradient-primary"
                     size="lg"
-                    onClick={handleSavePlan}
-                    disabled={createPlannedNight.isPending}
+                    disabled={plannedStops.length === 0 || createPlannedNight.isPending}
+                    onClick={handleSave}
                   >
-                    {createPlannedNight.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving…
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Plan
-                      </>
-                    )}
+                    <Share2 className="h-4 w-4 mr-2" />
+                    {createPlannedNight.isPending ? 'Saving…' : 'Save & Share Plan'}
                   </Button>
-
-                  {/* Inline validation error */}
-                  <AnimatePresence>
-                    {saveValidationError && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -6, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -6, height: 0 }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="text-xs text-destructive mt-2 text-center"
-                      >
-                        {saveValidationError}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-
-                  {!user && (
-                    <p className="text-xs text-center text-muted-foreground mt-3">
-                      <Link to="/auth" className="text-primary hover:underline">
-                        Sign in
-                      </Link>{' '}
-                      to save your plan
-                    </p>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+
+            </div>
           </div>
         </div>
-      </div>
       </PageTransition>
     </Layout>
   );
