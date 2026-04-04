@@ -200,10 +200,12 @@ export function Header() {
     }
   };
 
-  const showPartnerLink = !isAdmin && !isPartner;
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => item.to !== '/partner' || showPartnerLink,
-  );
+  // Partners have their own PartnerNavbar — hide all consumer discovery links.
+  // Admins see consumer links but not "Partner With Us".
+  // Regular users see everything.
+  const visibleItems = isPartner
+    ? []
+    : NAV_ITEMS.filter((item) => item.to !== '/partner' || !isAdmin);
 
   const handleSignOut = async () => {
     await signOut();

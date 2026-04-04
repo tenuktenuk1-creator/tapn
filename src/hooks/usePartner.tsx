@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -62,17 +63,49 @@ export function usePartnerVenues() {
 
 export function usePartnerBookings() {
   const { user } = useAuth();
-  
+  const queryClient = useQueryClient();
+
+  // Realtime: invalidate the cache whenever any booking row is inserted or
+  // updated. Supabase RLS ensures this channel only delivers rows the partner
+  // is authorised to see, so we just need to trigger a refetch.
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`partner-bookings-rt-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bookings' },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['partner-bookings', user.id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'bookings' },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['partner-bookings', user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return useQuery({
     queryKey: ['partner-bookings', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      // Get partner's approved venue IDs
+      // Fetch ALL venue IDs for this partner regardless of approval status.
+      // A partner created these venues themselves and must see incoming bookings
+      // even while admin approval is pending. The RLS UPDATE policy still
+      // prevents them from confirming/rejecting until status = 'approved'.
       const { data: partnerVenues, error: pvError } = await supabase
         .from('partner_venues')
         .select('venue_id')
-        .eq('user_id', user.id)
-        .eq('status', 'approved');
+        .eq('user_id', user.id);
       if (pvError) throw pvError;
       if (!partnerVenues?.length) return [];
       const venueIds = partnerVenues.map(pv => pv.venue_id).filter(Boolean);
@@ -102,11 +135,13 @@ export function useConfirmBooking() {
         .single();
       if (bErr) throw bErr;
 
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('bookings')
         .update({ status: 'confirmed', updated_at: new Date().toISOString() })
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .select('id');
       if (error) throw error;
+      if (!updated?.length) throw new Error('Booking could not be confirmed. You may not have permission to manage this venue.');
 
       // Notify the customer
       if (booking?.user_id) {
@@ -151,11 +186,13 @@ export function useDeclineBooking() {
       if (reason?.trim()) {
         update.admin_notes = `Partner reason: ${reason.trim()}`;
       }
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('bookings')
         .update(update)
-        .eq('id', bookingId);
+        .eq('id', bookingId)
+        .select('id');
       if (error) throw error;
+      if (!updated?.length) throw new Error('Booking could not be updated. You may not have permission to manage this venue.');
 
       // Notify the customer
       if (booking?.user_id) {

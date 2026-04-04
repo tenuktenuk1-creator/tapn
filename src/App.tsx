@@ -3,7 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { ProtectedRoute, PublicOnlyRoute } from "@/components/auth/ProtectedRoute";
+import { ProtectedRoute, PublicOnlyRoute, ConsumerRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import ProfilePage from "./pages/Profile";
@@ -23,6 +23,10 @@ import PartnerDashboard from "./pages/partner/PartnerDashboard";
 import PartnerVenues from "./pages/partner/PartnerVenues";
 import PartnerVenueForm from "./pages/partner/PartnerVenueForm";
 import PartnerBookings from "./pages/partner/PartnerBookings";
+import PartnerCalendar from "./pages/partner/PartnerCalendar";
+import PartnerSettings from "./pages/partner/PartnerSettings";
+import RevenueDetailPage from "./pages/partner/analytics/RevenueDetailPage";
+import OccupancyPage from "./pages/partner/analytics/OccupancyPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,7 +38,52 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* ── Consumer-facing routes ─────────────────────────────────────
+                ConsumerRoute blocks render until session+role have resolved,
+                then redirects authenticated partners to /partner/dashboard.
+                This prevents any flicker of consumer content for partners.
+            ─────────────────────────────────────────────────────────────── */}
+            <Route
+              path="/"
+              element={
+                <ConsumerRoute>
+                  <Index />
+                </ConsumerRoute>
+              }
+            />
+            <Route
+              path="/venues"
+              element={
+                <ConsumerRoute>
+                  <VenuesPage />
+                </ConsumerRoute>
+              }
+            />
+            <Route
+              path="/venues/:id"
+              element={
+                <ConsumerRoute>
+                  <VenueDetailPage />
+                </ConsumerRoute>
+              }
+            />
+            <Route path="/booking-success" element={<BookingSuccess />} />
+            <Route
+              path="/plan-a-night"
+              element={
+                <ConsumerRoute>
+                  <PlanANight />
+                </ConsumerRoute>
+              }
+            />
+            <Route
+              path="/how-it-works"
+              element={
+                <ConsumerRoute>
+                  <HowItWorks />
+                </ConsumerRoute>
+              }
+            />
             <Route
               path="/auth"
               element={
@@ -51,11 +100,6 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route path="/venues" element={<VenuesPage />} />
-            <Route path="/venues/:id" element={<VenueDetailPage />} />
-            <Route path="/booking-success" element={<BookingSuccess />} />
-            <Route path="/plan-a-night" element={<PlanANight />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
             <Route
               path="/bookings"
               element={
@@ -114,7 +158,15 @@ const App = () => (
               }
             />
 
-            <Route path="/partner" element={<PartnerLanding />} />
+            {/* Partner landing — skip to dashboard if already a partner */}
+            <Route
+              path="/partner"
+              element={
+                <ConsumerRoute>
+                  <PartnerLanding />
+                </ConsumerRoute>
+              }
+            />
             <Route
               path="/partner/dashboard"
               element={
@@ -152,6 +204,38 @@ const App = () => (
               element={
                 <ProtectedRoute requirePartner>
                   <PartnerBookings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/calendar"
+              element={
+                <ProtectedRoute requirePartner>
+                  <PartnerCalendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/settings"
+              element={
+                <ProtectedRoute requirePartner>
+                  <PartnerSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/analytics/revenue"
+              element={
+                <ProtectedRoute requirePartner>
+                  <RevenueDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/analytics/occupancy"
+              element={
+                <ProtectedRoute requirePartner>
+                  <OccupancyPage />
                 </ProtectedRoute>
               }
             />
