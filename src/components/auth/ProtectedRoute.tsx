@@ -3,6 +3,46 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
+// ─── Shared loading screen ────────────────────────────────────────────────────
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    </div>
+  );
+}
+
+// ─── ConsumerRoute ────────────────────────────────────────────────────────────
+// Wraps public/consumer pages. Blocks render until both the session AND the
+// role query have settled so partners are never shown consumer content —
+// not even for a single frame.
+//
+// Flow:
+//   • loading=true                          → spinner (session resolving)
+//   • loading=false, user≠null, role=null   → spinner (role DB query in flight)
+//   • loading=false, user≠null, isPartner   → redirect to /partner/dashboard
+//   • otherwise                             → render children normally
+
+export function ConsumerRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, isPartner, role } = useAuth();
+
+  // Both the session and the role must be settled before we make a routing
+  // decision. role===null with a live user means refreshRole() hasn't resolved.
+  const isReady = !loading && (user === null || role !== null);
+
+  if (!isReady) return <LoadingScreen />;
+
+  // Authenticated partners belong in the partner area — redirect instantly.
+  if (user && isPartner) {
+    return <Navigate to="/partner/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// ─── ProtectedRoute ───────────────────────────────────────────────────────────
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
@@ -19,13 +59,7 @@ export function ProtectedRoute({
   // useRef to fire the toast only once per mount cycle
   const toasted = useRef(false);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   // 401 — not authenticated
   if (!user) {
@@ -63,19 +97,15 @@ export function ProtectedRoute({
   return <>{children}</>;
 }
 
+// ─── PublicOnlyRoute ──────────────────────────────────────────────────────────
+
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, role } = useAuth();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const redirect = params.get('redirect');
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   if (user) {
     if (redirect) return <Navigate to={redirect} replace />;

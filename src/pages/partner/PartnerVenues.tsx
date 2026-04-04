@@ -1,4 +1,4 @@
-import { Layout } from '@/components/layout/Layout';
+import { PartnerLayout } from '@/components/layout/PartnerLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsPartner, usePartnerVenues } from '@/hooks/usePartner';
 import { Navigate, Link } from 'react-router-dom';
@@ -22,11 +22,11 @@ export default function PartnerVenues() {
 
   if (authLoading || partnerLoading) {
     return (
-      <Layout>
+      <PartnerLayout>
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </Layout>
+      </PartnerLayout>
     );
   }
 
@@ -39,7 +39,7 @@ export default function PartnerVenues() {
   }
 
   return (
-    <Layout>
+    <PartnerLayout>
       <div className="container py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -147,5 +147,5 @@ export default function PartnerVenues() {
           </div>
         )}
       </div>
-    </Layout>);
+    </PartnerLayout>);
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { PartnerLayout } from '@/components/layout/PartnerLayout';
 import { useNavigate, useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsPartner, useCreatePartnerVenue, useUpdatePartnerVenue } from '@/hooks/usePartner';
@@ -111,11 +111,11 @@ export default function PartnerVenueForm() {
 
   if (authLoading || partnerLoading) {
     return (
-      <Layout>
+      <PartnerLayout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </Layout>
+      </PartnerLayout>
     );
   }
 
@@ -227,7 +227,7 @@ export default function PartnerVenueForm() {
   };
 
   return (
-    <Layout>
+    <PartnerLayout>
       <div className="container py-8 max-w-2xl">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/partner/venues">
@@ -419,5 +419,5 @@ export default function PartnerVenueForm() {
           </div>
         </form>
       </div>
-    </Layout>);
+    </PartnerLayout>);
 }
