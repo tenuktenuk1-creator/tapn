@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -153,11 +153,11 @@ export default function AdminBookings() {
 
   if (authLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -291,7 +291,7 @@ export default function AdminBookings() {
     status === 'pending' || status === 'confirmed' || status === 'approved';
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin">
@@ -740,5 +740,5 @@ export default function AdminBookings() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>);
+    </AdminLayout>);
 }

@@ -18,6 +18,10 @@ import AdminVenues from "./pages/admin/AdminVenues";
 import AdminVenueForm from "./pages/admin/AdminVenueForm";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminPartners from "./pages/admin/AdminPartners";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminSettings from "./pages/admin/AdminSettings";
 import PartnerLanding from "./pages/partner/PartnerLanding";
 import PartnerDashboard from "./pages/partner/PartnerDashboard";
 import PartnerVenues from "./pages/partner/PartnerVenues";
@@ -154,6 +158,38 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminPartners />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminAnalytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/payments"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPayments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/notifications"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminNotifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminSettings />
                 </ProtectedRoute>
               }
             />

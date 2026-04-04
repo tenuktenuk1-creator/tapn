@@ -97,6 +97,31 @@ export function ProtectedRoute({
   return <>{children}</>;
 }
 
+// ─── AdminRoute ───────────────────────────────────────────────────────────────
+// Identical flicker-prevention logic to ConsumerRoute — blocks render until
+// both session and role DB query have settled, then enforces isAdmin.
+
+export function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, isAdmin, role } = useAuth();
+  const location = useLocation();
+
+  const isReady = !loading && (user === null || role !== null);
+  if (!isReady) return <LoadingScreen />;
+
+  if (!user) {
+    return (
+      <Navigate
+        to={`/auth?redirect=${encodeURIComponent(location.pathname)}`}
+        replace
+      />
+    );
+  }
+
+  if (!isAdmin) return <Navigate to="/" replace />;
+
+  return <>{children}</>;
+}
+
 // ─── PublicOnlyRoute ──────────────────────────────────────────────────────────
 
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
