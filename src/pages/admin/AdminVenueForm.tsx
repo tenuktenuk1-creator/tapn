@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useNavigate, useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -107,11 +107,11 @@ export default function AdminVenueForm() {
 
   if (authLoading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -223,7 +223,7 @@ export default function AdminVenueForm() {
   };
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container py-8 max-w-2xl">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin/venues">
@@ -427,5 +427,5 @@ export default function AdminVenueForm() {
           </div>
         </form>
       </div>
-    </Layout>);
+    </AdminLayout>);
 }

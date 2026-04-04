@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Layout } from '@/components/layout/Layout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminVenues } from '@/hooks/useVenues';
@@ -71,11 +71,11 @@ export default function AdminVenues() {
 
   if (loading) {
     return (
-      <Layout>
+      <AdminLayout>
         <div className="container py-8 flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
-      </Layout>
+      </AdminLayout>
     );
   }
 
@@ -173,7 +173,7 @@ export default function AdminVenues() {
   const venueTypes = ['cafe', 'karaoke', 'pool_snooker', 'lounge'];
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="container py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin">
@@ -485,5 +485,5 @@ export default function AdminVenues() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </Layout>);
+    </AdminLayout>);
 }
