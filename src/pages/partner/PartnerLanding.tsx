@@ -8,7 +8,7 @@ import {
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsPartner, useMyPartnerRequest, useApplyPartner } from '@/hooks/usePartner';
+import { useIsPartner, useMyPartnerRequest } from '@/hooks/usePartner';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, TrendingUp, Calendar, Users, ChevronRight,
@@ -644,32 +644,18 @@ function FinalCTASection({ onApply, isLoading }: { onApply: () => void; isLoadin
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function PartnerLanding() {
-  const { user, loading: authLoading, refreshRole } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: myRequest, isLoading: requestLoading } = useMyPartnerRequest();
-  const applyPartner = useApplyPartner();
 
-  const handleApply = useCallback(async () => {
+  const handleApply = useCallback(() => {
     if (!user) {
-      navigate('/auth?redirect=/partner');
+      navigate('/auth?redirect=/partner/apply');
       return;
     }
-    try {
-      await applyPartner.mutateAsync();
-      await refreshRole(user.id);
-      toast.success('Welcome to the TAPN Partner Program!');
-      navigate('/partner/dashboard');
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('duplicate') || msg.includes('already')) {
-        await refreshRole(user.id);
-        navigate('/partner/dashboard');
-      } else {
-        toast.error('Failed to join partner program. Please try again.');
-      }
-    }
-  }, [user, navigate, applyPartner, refreshRole]);
+    navigate('/partner/apply');
+  }, [user, navigate]);
 
   // ── Loading ────────────────────────────────────────────────────────
   if (authLoading || partnerLoading || requestLoading) {
@@ -750,10 +736,10 @@ export default function PartnerLanding() {
             </p>
             <Button
               onClick={handleApply}
-              disabled={applyPartner.isPending}
+              disabled={false}
               className="gradient-primary rounded-full px-8"
             >
-              {applyPartner.isPending ? 'Submitting…' : 'Reapply'}
+              {'Reapply'}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           </motion.div>
@@ -835,7 +821,7 @@ export default function PartnerLanding() {
           >
             <ConnectionHero
               onConnect={handleApply}
-              isLoading={applyPartner.isPending}
+              isLoading={false}
             />
           </motion.div>
 
@@ -859,7 +845,7 @@ export default function PartnerLanding() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <StepsSection onApply={handleApply} isLoading={applyPartner.isPending} />
+      <StepsSection onApply={handleApply} isLoading={false} />
 
       {/* ── WHY PARTNER ── */}
       <BenefitsSection />
@@ -868,7 +854,7 @@ export default function PartnerLanding() {
       <TrustStrip />
 
       {/* ── FINAL CTA ── */}
-      <FinalCTASection onApply={handleApply} isLoading={applyPartner.isPending} />
+      <FinalCTASection onApply={handleApply} isLoading={false} />
     </Layout>
   );
 }

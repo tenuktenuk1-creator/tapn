@@ -18,11 +18,14 @@ import AdminVenues from "./pages/admin/AdminVenues";
 import AdminVenueForm from "./pages/admin/AdminVenueForm";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminPartners from "./pages/admin/AdminPartners";
+import AdminPartnerDetail from "./pages/admin/AdminPartnerDetail";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminSettings from "./pages/admin/AdminSettings";
 import PartnerLanding from "./pages/partner/PartnerLanding";
+import PartnerApplyPage from "./pages/partner/apply/PartnerApplyPage";
+import PartnerApplyStatus from "./pages/partner/apply/PartnerApplyStatus";
 import PartnerDashboard from "./pages/partner/PartnerDashboard";
 import PartnerVenues from "./pages/partner/PartnerVenues";
 import PartnerVenueForm from "./pages/partner/PartnerVenueForm";
@@ -162,6 +165,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/partners/:applicationId"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPartnerDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/analytics"
               element={
                 <ProtectedRoute requireAdmin>
@@ -190,6 +201,24 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Partner application flow — open to any logged-in user */}
+            <Route
+              path="/partner/apply"
+              element={
+                <ProtectedRoute>
+                  <PartnerApplyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/apply/status"
+              element={
+                <ProtectedRoute>
+                  <PartnerApplyStatus />
                 </ProtectedRoute>
               }
             />
