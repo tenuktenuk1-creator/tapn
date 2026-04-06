@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,8 @@ interface Step4ReviewProps {
   onBack: () => void;
   onSubmit: () => void;
   isSubmitting: boolean;
+  /** Called when user clicks a missing-item error to jump to that field */
+  onNavigateToField?: (key: string) => void;
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -162,6 +164,7 @@ export function Step4Review({
   onBack,
   onSubmit,
   isSubmitting,
+  onNavigateToField,
 }: Step4ReviewProps) {
   const [declaration, setDeclaration] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -313,22 +316,40 @@ export function Step4Review({
         </div>
       </ReviewSection>
 
-      {/* Missing items warning */}
+      {/* Missing items warning — each item is clickable to jump to the field */}
       {missing.length > 0 && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="h-4 w-4 text-amber-400 flex-shrink-0" />
             <p className="text-amber-400 font-medium text-sm">
               {missing.length} item{missing.length !== 1 ? 's' : ''} required before you can submit
             </p>
+            {onNavigateToField && (
+              <span className="ml-auto text-xs text-amber-400/60">click to jump</span>
+            )}
           </div>
-          <ul className="space-y-1 pl-6">
+          <div className="space-y-1">
             {missing.map((item) => (
-              <li key={item.id} className="text-sm text-amber-300 list-disc">
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onNavigateToField?.(item.id)}
+                className={[
+                  'w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-amber-300',
+                  'transition-colors duration-150',
+                  onNavigateToField
+                    ? 'hover:bg-amber-500/20 hover:text-amber-100 cursor-pointer active:bg-amber-500/30'
+                    : 'cursor-default',
+                ].join(' ')}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                 {item.label}
-              </li>
+                {onNavigateToField && (
+                  <ChevronRight className="ml-auto h-3.5 w-3.5 text-amber-400/50 flex-shrink-0" />
+                )}
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
@@ -337,6 +358,7 @@ export function Step4Review({
         <p className="font-semibold text-foreground text-sm mb-3">Declaration</p>
         <label className="flex items-start gap-3 cursor-pointer group">
           <Checkbox
+            id="declaration-checkbox"
             checked={declaration}
             onCheckedChange={(v) => setDeclaration(!!v)}
             className="mt-0.5 flex-shrink-0"

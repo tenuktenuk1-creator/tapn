@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -29,6 +29,7 @@ import {
   DocumentType,
   DOCUMENT_LABELS,
   REQUIRED_DOCS_BY_ROLE,
+  highlightField,
 } from '@/types/application';
 
 interface Step3DocumentsProps {
@@ -37,6 +38,8 @@ interface Step3DocumentsProps {
   onNext: () => void;
   onBack: () => void;
   documents: ApplicationDocument[];
+  initialFocusField?: string | null;
+  onClearHighlight?: () => void;
 }
 
 const OPTIONAL_DOC_TYPES: DocumentType[] = ['lease_agreement', 'venue_photo_extra'];
@@ -158,6 +161,7 @@ function DocumentCard({
 
   return (
     <div
+      id={`doc-upload-${docType}`}
       className={[
         'rounded-xl border p-4 transition-colors',
         uploadedDoc
@@ -286,10 +290,22 @@ export function Step3Documents({
   onNext,
   onBack,
   documents,
+  initialFocusField,
+  onClearHighlight,
 }: Step3DocumentsProps) {
   const { user } = useAuth();
   const uploadDocument = useUploadDocument();
   const [uploadingTypes, setUploadingTypes] = useState<Set<DocumentType>>(new Set());
+
+  // Scroll to and highlight a document upload card requested from Step 4
+  useEffect(() => {
+    if (!initialFocusField) return;
+    const timer = setTimeout(() => {
+      highlightField(initialFocusField);
+      onClearHighlight?.();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [initialFocusField, onClearHighlight]);
 
   const role = formData.role_at_venue ?? 'owner';
   const requiredDocTypes: DocumentType[] = REQUIRED_DOCS_BY_ROLE[role] ?? REQUIRED_DOCS_BY_ROLE['owner'];

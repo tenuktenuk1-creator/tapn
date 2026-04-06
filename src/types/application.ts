@@ -292,3 +292,70 @@ export function computeRiskLevel(flags: FraudFlag[]): RiskLevel {
   if (flags.some(f => f.severity === 'MEDIUM')) return 'medium';
   return 'low';
 }
+
+// ─── Field navigation map ─────────────────────────────────────────────────────
+// Maps each missing-item id → { step, fieldId } so Step 4's error list can
+// navigate the user directly to the broken field in the correct step.
+
+export const FIELD_MAP: Record<string, { step: 1 | 2 | 3 | 4; fieldId: string }> = {
+  // Step 1 — Identity
+  full_name:            { step: 1, fieldId: 'full_name' },
+  role_at_venue:        { step: 1, fieldId: 'role_at_venue' },
+  phone:                { step: 1, fieldId: 'phone' },
+  business_email:       { step: 1, fieldId: 'business_email' },
+  national_id:          { step: 1, fieldId: 'national_id' },
+
+  // Step 2 — Venue details
+  venue_name:           { step: 2, fieldId: 'venue_name' },
+  venue_category:       { step: 2, fieldId: 'venue_category' },
+  description:          { step: 2, fieldId: 'description' },
+  description_length:   { step: 2, fieldId: 'description' },
+  address_line1:        { step: 2, fieldId: 'address_line1' },
+  city:                 { step: 2, fieldId: 'city' },
+  google_maps_link:     { step: 2, fieldId: 'google_maps_link' },
+  seating_capacity:     { step: 2, fieldId: 'seating_capacity' },
+  avg_spend_per_person: { step: 2, fieldId: 'avg_spend_per_person' },
+  opening_hours:        { step: 2, fieldId: 'opening_hours' },
+  business_reg_number:  { step: 2, fieldId: 'business_reg_number' },
+
+  // Step 3 — Documents
+  doc_business_registration: { step: 3, fieldId: 'doc-upload-business_registration' },
+  doc_trade_license:         { step: 3, fieldId: 'doc-upload-trade_license' },
+  doc_proof_of_address:      { step: 3, fieldId: 'doc-upload-proof_of_address' },
+  doc_applicant_id:          { step: 3, fieldId: 'doc-upload-applicant_id' },
+  doc_authorization_letter:  { step: 3, fieldId: 'doc-upload-authorization_letter' },
+  doc_owner_id:              { step: 3, fieldId: 'doc-upload-owner_id' },
+  doc_venue_photo:           { step: 3, fieldId: 'doc-upload-venue_photo' },
+
+  // Step 4 — Declaration (stays on same page)
+  declaration: { step: 4, fieldId: 'declaration-checkbox' },
+};
+
+/**
+ * Scroll to a DOM element by id, add a 2-second pink glow highlight,
+ * and focus it if it's an input / textarea.
+ * Fails silently if the element doesn't exist.
+ */
+export function highlightField(fieldId: string): void {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Add highlight ring
+  el.classList.add(
+    'ring-2', 'ring-primary', 'ring-offset-2',
+    'ring-offset-[hsl(240_10%_4%)]', 'transition-shadow',
+  );
+
+  setTimeout(() => {
+    el.classList.remove(
+      'ring-2', 'ring-primary', 'ring-offset-2',
+      'ring-offset-[hsl(240_10%_4%)]', 'transition-shadow',
+    );
+  }, 2000);
+
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    el.focus();
+  }
+}

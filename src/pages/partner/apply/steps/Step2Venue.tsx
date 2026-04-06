@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -28,12 +28,15 @@ import {
   VenueCategory,
   VENUE_CATEGORY_LABELS,
   OpeningHours,
+  highlightField,
 } from '@/types/application';
 
 interface Step2VenueProps {
   formData: Partial<PartnerApplication>;
   onNext: (data: Partial<PartnerApplication>) => void;
   onBack: () => void;
+  initialFocusField?: string | null;
+  onClearHighlight?: () => void;
 }
 
 interface FormErrors {
@@ -46,6 +49,7 @@ interface FormErrors {
   seating_capacity?: string;
   avg_spend_per_person?: string;
   opening_hours?: string;
+  business_reg_number?: string;
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -68,7 +72,7 @@ function buildDefaultHours(existing?: OpeningHours | null): OpeningHours {
   return defaults;
 }
 
-export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
+export function Step2Venue({ formData, onNext, onBack, initialFocusField, onClearHighlight }: Step2VenueProps) {
   const [venueName, setVenueName] = useState(formData.venue_name ?? '');
   const [venueCategory, setVenueCategory] = useState<VenueCategory | ''>(
     formData.venue_category ?? ''
@@ -94,7 +98,18 @@ export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
   const [openingHours, setOpeningHours] = useState<OpeningHours>(
     buildDefaultHours(formData.opening_hours)
   );
+  const [businessRegNumber, setBusinessRegNumber] = useState(formData.business_reg_number ?? '');
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Scroll-to-field requested from Step 4 missing-items list
+  useEffect(() => {
+    if (!initialFocusField) return;
+    const timer = setTimeout(() => {
+      highlightField(initialFocusField);
+      onClearHighlight?.();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [initialFocusField, onClearHighlight]);
 
   function updateHours(day: string, field: 'open' | 'close' | 'closed', value: string | boolean) {
     setOpeningHours((prev) => ({
@@ -125,6 +140,9 @@ export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
     if (!hasOpenDay)
       newErrors.opening_hours = 'At least one day must be open';
 
+    if (!businessRegNumber.trim())
+      newErrors.business_reg_number = 'Business registration number is required';
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -147,6 +165,7 @@ export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
       private_hire_available: privateHireAvailable,
       avg_spend_per_person: Number(avgSpend),
       opening_hours: openingHours,
+      business_reg_number: businessRegNumber.trim(),
     });
   }
 
@@ -454,12 +473,12 @@ export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="avg_spend" className="flex items-center gap-1 text-white">
+            <Label htmlFor="avg_spend_per_person" className="flex items-center gap-1 text-white">
               <DollarSign className="h-4 w-4 text-primary" />
               Avg. Spend per Person (₮) <span className="text-red-400">*</span>
             </Label>
             <Input
-              id="avg_spend"
+              id="avg_spend_per_person"
               type="number"
               min={0}
               value={avgSpend}
@@ -489,6 +508,7 @@ export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
 
       {/* Section 5: Opening Hours */}
       <motion.div
+        id="opening_hours"
         className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur p-6 space-y-4"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -555,6 +575,38 @@ export function Step2Venue({ formData, onNext, onBack }: Step2VenueProps) {
               </div>
             );
           })}
+        </div>
+      </motion.div>
+
+      {/* Section 6: Business Registration */}
+      <motion.div
+        className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur p-6 space-y-4"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.25 }}
+      >
+        <div className="flex items-center gap-2 pb-1 border-b border-white/10">
+          <Building2 className="h-4 w-4 text-primary" />
+          <h2 className="font-semibold text-white">Business Registration</h2>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="business_reg_number" className="text-white">
+            Business Registration Number <span className="text-red-400">*</span>
+          </Label>
+          <Input
+            id="business_reg_number"
+            value={businessRegNumber}
+            onChange={(e) => setBusinessRegNumber(e.target.value)}
+            placeholder="e.g. 4012345"
+            className={inputClass}
+          />
+          <p className="text-xs text-muted-foreground">
+            Found on your business registration certificate.
+          </p>
+          {errors.business_reg_number && (
+            <p className="text-sm text-red-400">{errors.business_reg_number}</p>
+          )}
         </div>
       </motion.div>
 
