@@ -105,19 +105,30 @@ export function useUpsertDraft(applicationId: string | null) {
     mutationFn: async (data: Partial<PartnerApplication>): Promise<string> => {
       if (!user) throw new Error('Not authenticated');
 
+      // Strip relational/computed fields that are not DB columns — these come from
+      // useMyApplication merging joined relations into the PartnerApplication object.
+      const {
+        documents: _documents,
+        verification_checks: _vc,
+        review_logs: _rl,
+        info_requests: _ir,
+        document_count: _dc,
+        ...dbData
+      } = data;
+
       if (!applicationId) {
         // INSERT a new draft
         const { data: inserted, error } = await db
           .from('partner_applications')
           .insert({
-            ...data,
+            ...dbData,
             user_id: user.id,
             status: 'draft',
           })
           .select('id')
           .single();
 
-        if (error) throw error;
+        if (error) throw new Error(error.message ?? JSON.stringify(error));
         return (inserted as { id: string }).id;
       }
 
@@ -125,7 +136,7 @@ export function useUpsertDraft(applicationId: string | null) {
       const { data: updated, error } = await db
         .from('partner_applications')
         .update({
-          ...data,
+          ...dbData,
           updated_at: new Date().toISOString(),
         })
         .eq('id', applicationId)
@@ -133,11 +144,14 @@ export function useUpsertDraft(applicationId: string | null) {
         .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) throw new Error(error.message ?? JSON.stringify(error));
       return (updated as { id: string }).id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-partner-application', user?.id] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Draft save failed: ${error.message}`);
     },
   });
 }
@@ -205,6 +219,10 @@ export function useSubmitApplication() {
           completeness_score: completenessScore,
           fraud_flags: fraudFlags,
           risk_level: riskLevel,
+          // Belt-and-suspenders: ensure declaration fields are persisted even if
+          // the pre-submit draft save raced or was skipped.
+          declaration_confirmed: true,
+          declaration_confirmed_at: now,
           updated_at: now,
         })
         .eq('id', applicationId)

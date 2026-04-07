@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, User, Phone, Mail, CreditCard, Linkedin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PartnerApplication, VenueRoleAtVenue } from '@/types/application';
+import { PartnerApplication, VenueRoleAtVenue, highlightField } from '@/types/application';
 
 interface Step1IdentityProps {
   formData: Partial<PartnerApplication>;
   onNext: (data: Partial<PartnerApplication>) => void;
+  initialFocusField?: string | null;
+  onClearHighlight?: () => void;
 }
 
 interface FormErrors {
@@ -32,7 +34,7 @@ const ROLE_OPTIONS: { value: VenueRoleAtVenue; label: string }[] = [
   { value: 'authorized_manager', label: 'Authorized Manager' },
 ];
 
-export function Step1Identity({ formData, onNext }: Step1IdentityProps) {
+export function Step1Identity({ formData, onNext, initialFocusField, onClearHighlight }: Step1IdentityProps) {
   const [fullName, setFullName] = useState(formData.full_name ?? '');
   const [roleAtVenue, setRoleAtVenue] = useState<VenueRoleAtVenue | ''>(
     formData.role_at_venue ?? ''
@@ -42,6 +44,16 @@ export function Step1Identity({ formData, onNext }: Step1IdentityProps) {
   const [nationalId, setNationalId] = useState(formData.national_id ?? '');
   const [linkedinUrl, setLinkedinUrl] = useState(formData.linkedin_url ?? '');
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Scroll to and highlight a field requested from Step 4's missing-items list
+  useEffect(() => {
+    if (!initialFocusField) return;
+    const timer = setTimeout(() => {
+      highlightField(initialFocusField);
+      onClearHighlight?.();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [initialFocusField, onClearHighlight]);
 
   function validate(): boolean {
     const newErrors: FormErrors = {};

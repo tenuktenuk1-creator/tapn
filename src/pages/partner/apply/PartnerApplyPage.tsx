@@ -9,7 +9,7 @@ import {
   useUpsertDraft,
   useSubmitApplication,
 } from '@/hooks/usePartnerApplication';
-import { PartnerApplication, ApplicationDocument } from '@/types/application';
+import { PartnerApplication, ApplicationDocument, FIELD_MAP, highlightField } from '@/types/application';
 
 import { PartnerApplyLayout } from './PartnerApplyLayout';
 import { Step1Identity } from './steps/Step1Identity';
@@ -28,6 +28,8 @@ export default function PartnerApplyPage() {
   const [formData, setFormData] = useState<Partial<PartnerApplication>>({});
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [initialized, setInitialized] = useState(false);
+  // Field to scroll-to after a step transition triggered from the missing-items list
+  const [pendingHighlight, setPendingHighlight] = useState<string | null>(null);
 
   const { data: existingApp, isLoading: appLoading } = useMyApplication();
   const upsertDraft = useUpsertDraft(applicationId);
@@ -78,8 +80,9 @@ export default function PartnerApplyPage() {
         const id = await upsertDraft.mutateAsync({ ...formData, current_step: step });
         if (!applicationId) setApplicationId(id);
         setLastSaved(new Date());
-      } catch {
-        // Silent auto-save failure
+      } catch (err) {
+        // onError in useUpsertDraft already shows the toast; log for debugging
+        console.error('[auto-save error]', err);
       }
     }, 30_000);
 
@@ -97,8 +100,9 @@ export default function PartnerApplyPage() {
       if (!applicationId) setApplicationId(id);
       setLastSaved(new Date());
       toast.success('Draft saved');
-    } catch {
-      toast.error('Failed to save draft');
+    } catch (err) {
+      // onError in useUpsertDraft already toasts the real message; log here for debugging
+      console.error('[handleSaveDraft error]', err);
     }
   };
 
@@ -111,8 +115,9 @@ export default function PartnerApplyPage() {
       const id = await upsertDraft.mutateAsync(merged);
       if (!applicationId) setApplicationId(id);
       setLastSaved(new Date());
-    } catch {
-      // Draft save error already toasted by hook
+    } catch (err) {
+      // onError in useUpsertDraft already shows the toast; log for debugging
+      console.error('[handleNext draft save error]', err);
     }
 
     setStep((prev) => Math.min(prev + 1, 4) as Step);
@@ -125,17 +130,51 @@ export default function PartnerApplyPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /**
+   * Called when user clicks a missing-item row in Step 4's error list.
+   * Looks up the FIELD_MAP to find which step and field id to target.
+   * If already on the right step → highlight immediately.
+   * Otherwise → navigate to the step and set a pending highlight to fire after mount.
+   */
+  const navigateToField = (key: string) => {
+    const mapping = FIELD_MAP[key];
+    if (!mapping) return;
+
+    if (mapping.step === step) {
+      // Same step — scroll + highlight directly (no remount needed)
+      highlightField(mapping.fieldId);
+      return;
+    }
+
+    // Different step — navigate first, then highlight after the component mounts
+    setPendingHighlight(mapping.fieldId);
+    setStep(mapping.step as Step);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Final submission
   const handleSubmit = async () => {
     if (!applicationId) {
       toast.error('Application not saved yet. Please try again.');
       return;
     }
+
+    // Persist the latest formData (including declaration_confirmed: true) before
+    // submitting — useSubmitApplication re-fetches from DB to validate, so the
+    // declaration flag must be in the DB before that fetch runs.
+    try {
+      await upsertDraft.mutateAsync({ ...formData, current_step: step });
+    } catch (err) {
+      console.error('[pre-submit save error]', err);
+      // upsertDraft's onError already showed the toast; abort submit
+      return;
+    }
+
     try {
       await submitApplication.mutateAsync(applicationId);
       navigate('/partner/apply/status', { replace: true });
     } catch {
-      // Error is toasted by hook
+      // Error toasted by hook
     }
   };
 
@@ -178,6 +217,8 @@ export default function PartnerApplyPage() {
         <Step1Identity
           formData={formData}
           onNext={handleNext}
+          initialFocusField={pendingHighlight}
+          onClearHighlight={() => setPendingHighlight(null)}
         />
       )}
 
@@ -186,6 +227,8 @@ export default function PartnerApplyPage() {
           formData={formData}
           onNext={handleNext}
           onBack={handleBack}
+          initialFocusField={pendingHighlight}
+          onClearHighlight={() => setPendingHighlight(null)}
         />
       )}
 
@@ -199,6 +242,8 @@ export default function PartnerApplyPage() {
           }}
           onBack={handleBack}
           documents={documents}
+          initialFocusField={pendingHighlight}
+          onClearHighlight={() => setPendingHighlight(null)}
         />
       )}
 
@@ -209,7 +254,11 @@ export default function PartnerApplyPage() {
           documents={documents}
           onBack={handleBack}
           onSubmit={handleSubmit}
-          isSubmitting={submitApplication.isPending}
+          isSubmitting={submitApplication.isPending || upsertDraft.isPending}
+          onNavigateToField={navigateToField}
+          onDeclarationChange={(v) =>
+            setFormData((prev) => ({ ...prev, declaration_confirmed: v }))
+          }
         />
       )}
 
