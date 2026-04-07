@@ -80,8 +80,9 @@ export default function PartnerApplyPage() {
         const id = await upsertDraft.mutateAsync({ ...formData, current_step: step });
         if (!applicationId) setApplicationId(id);
         setLastSaved(new Date());
-      } catch {
-        // Silent auto-save failure
+      } catch (err) {
+        // onError in useUpsertDraft already shows the toast; log for debugging
+        console.error('[auto-save error]', err);
       }
     }, 30_000);
 
@@ -99,8 +100,9 @@ export default function PartnerApplyPage() {
       if (!applicationId) setApplicationId(id);
       setLastSaved(new Date());
       toast.success('Draft saved');
-    } catch {
-      toast.error('Failed to save draft');
+    } catch (err) {
+      // onError in useUpsertDraft already toasts the real message; log here for debugging
+      console.error('[handleSaveDraft error]', err);
     }
   };
 
@@ -113,8 +115,9 @@ export default function PartnerApplyPage() {
       const id = await upsertDraft.mutateAsync(merged);
       if (!applicationId) setApplicationId(id);
       setLastSaved(new Date());
-    } catch {
-      // Draft save error already toasted by hook
+    } catch (err) {
+      // onError in useUpsertDraft already shows the toast; log for debugging
+      console.error('[handleNext draft save error]', err);
     }
 
     setStep((prev) => Math.min(prev + 1, 4) as Step);

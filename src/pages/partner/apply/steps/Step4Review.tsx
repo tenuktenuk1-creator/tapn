@@ -170,7 +170,11 @@ export function Step4Review({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const score = computeCompletenessScore(formData, documents);
-  const missing = getMissingRequirements(formData, documents);
+  // Merge local declaration state so missing recomputes whenever the checkbox changes
+  const missing = getMissingRequirements(
+    { ...formData, declaration_confirmed: declaration },
+    documents
+  );
 
   const role = formData.role_at_venue ?? 'owner';
   const requiredDocs = REQUIRED_DOCS_BY_ROLE[role];
@@ -188,7 +192,8 @@ export function Step4Review({
   );
   const docsComplete = requiredDocs.every((dt) => uploadedDocTypes.includes(dt));
 
-  const canSubmit = missing.length === 0 && declaration;
+  // declaration_confirmed is already baked into `missing` via the merged object above
+  const canSubmit = missing.length === 0;
 
   // Opening hours display
   const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
