@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +20,13 @@ import {
   Sofa,
   Music,
   Activity,
-  Flame
+  Flame,
+  MapPin
 } from 'lucide-react';
 import { useVenues } from '@/hooks/useVenues';
 import { VenueCard } from '@/components/venues/VenueCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { venueTypeLabels } from '@/types/venue';
 // Single source of truth for "How TAPN Works" steps (KAN-59)
 import { HOW_IT_WORKS_STEPS } from '@/lib/howItWorksSteps';
 
@@ -73,14 +75,36 @@ const bookingFeatures = [
 export default function Index() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const { data: venues, isLoading } = useVenues();
 
   const trendingVenues = venues
     ? [...venues].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 3)
     : [];
 
+  const suggestions = useMemo(() => {
+    if (!venues || searchQuery.length < 1) return [];
+    const q = searchQuery.toLowerCase();
+    return venues
+      .filter(v => v.name.toLowerCase().includes(q) || v.venue_type.toLowerCase().includes(q))
+      .slice(0, 5);
+  }, [venues, searchQuery]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowSuggestions(false);
     navigate(`/venues?search=${encodeURIComponent(searchQuery)}`);
   };
 
@@ -99,18 +123,51 @@ export default function Index() {
           
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-6">
-            <div className="flex items-center bg-secondary/50 border border-border rounded-full p-2 pl-6">
-              <Search className="h-5 w-5 text-muted-foreground mr-3" />
-              <Input
-                type="text"
-                placeholder="Search for venues, categories, or locations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
-              />
-              <Button type="submit" className="gradient-primary rounded-full px-8">
-                Search
-              </Button>
+            <div ref={searchRef} className="relative">
+              <div className="flex items-center bg-secondary/50 border border-border rounded-full p-2 pl-6">
+                <Search className="h-5 w-5 text-muted-foreground mr-3" />
+                <Input
+                  type="text"
+                  placeholder="Search for venues, categories, or locations..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => searchQuery.length > 0 && setShowSuggestions(true)}
+                  className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground"
+                />
+                <Button type="submit" className="gradient-primary rounded-full px-8">
+                  Search
+                </Button>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 mt-2 bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-50">
+                  {suggestions.map(v => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => {
+                        setShowSuggestions(false);
+                        navigate(`/venues/${v.id}`);
+                      }}
+                      className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-secondary/60 transition-colors border-b border-border/50 last:border-0"
+                    >
+                      <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{v.name}</p>
+                        <p className="text-xs text-muted-foreground">{venueTypeLabels[v.venue_type]}{v.city && ` · ${v.city}`}</p>
+                      </div>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => { setShowSuggestions(false); navigate(`/venues?search=${encodeURIComponent(searchQuery)}`); }}
+                    className="w-full px-5 py-2.5 text-center text-xs font-medium text-primary hover:bg-secondary/40 transition-colors"
+                  >
+                    See all results for "{searchQuery}"
+                  </button>
+                </div>
+              )}
             </div>
           </form>
 
