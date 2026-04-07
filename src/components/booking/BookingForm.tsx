@@ -203,7 +203,7 @@ export function BookingForm({ venue }: BookingFormProps) {
           .eq('venue_id', venue.id)
           .eq('status', 'approved')
           .then(({ data: partners }) => {
-            partners?.forEach(p => {
+            partners?.forEach((p: { user_id: string }) => {
               void notify.bookingReceived(p.user_id, venue.name, bookingId);
             });
           });

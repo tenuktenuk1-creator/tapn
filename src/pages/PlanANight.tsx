@@ -215,7 +215,7 @@ export default function PlanANight() {
           {/* ── Step bar ──────────────────────────────────────────────────── */}
           <div className="border-b border-border bg-background/90 backdrop-blur-md sticky top-16 z-30">
             <div className="container flex items-center justify-center py-3">
-              {(['Discover', 'Book', 'Plan'] as const).map((label, i) => (
+              {(['Discover', 'Schedule', 'Plan'] as const).map((label, i) => (
                 <div key={label} className="flex items-center">
                   <div className="flex items-center gap-2 px-4">
                     <div className={cn(
@@ -361,7 +361,7 @@ export default function PlanANight() {
 
               {/* ── CENTER: BOOK ────────────────────────────────────────── */}
               <div className="flex flex-col overflow-hidden">
-                <PanelLabel step={2} label="Book" active={panelStep >= 1} />
+                <PanelLabel step={2} label="Schedule" active={panelStep >= 1} />
 
                 <div className="flex-1 overflow-y-auto">
                   {!selectedVenue ? (
@@ -462,7 +462,7 @@ export default function PlanANight() {
                         )}
                       </div>
 
-                      {/* Payment */}
+                      {/* Add to plan button */}
                       <AnimatePresence>
                         {selectedTime && (
                           <motion.div
@@ -471,51 +471,6 @@ export default function PlanANight() {
                             exit={{ opacity: 0 }}
                             className="space-y-3"
                           >
-                            <div>
-                              <div className="flex items-center gap-2 mb-2.5">
-                                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                  Payment
-                                </p>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <button
-                                  onClick={() => setPayMethod('qpay')}
-                                  className={cn(
-                                    'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-all duration-150',
-                                    payMethod === 'qpay'
-                                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                                      : 'bg-card border-border text-muted-foreground hover:border-primary/30'
-                                  )}
-                                >
-                                  <Zap className="h-4 w-4" />
-                                  QPay
-                                </button>
-                                <button
-                                  onClick={() => setPayMethod('card')}
-                                  className={cn(
-                                    'flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-all duration-150',
-                                    payMethod === 'card'
-                                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                                      : 'bg-card border-border text-muted-foreground hover:border-primary/30'
-                                  )}
-                                >
-                                  <CreditCard className="h-4 w-4" />
-                                  Card
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Summary row */}
-                            {selectedVenue.price_per_hour && (
-                              <div className="flex justify-between items-center px-4 py-3 rounded-xl bg-card border border-border">
-                                <span className="text-sm text-muted-foreground">2 hours estimate</span>
-                                <span className="text-sm font-bold text-foreground">
-                                  ₮{(selectedVenue.price_per_hour * 2).toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-
                             <Button
                               className="w-full gradient-primary"
                               size="lg"
@@ -543,8 +498,8 @@ export default function PlanANight() {
                               >
                                 <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold">✓</div>
                                 <div>
-                                  <p className="text-sm text-green-400 font-semibold">Confirmed for {formatTime12(selectedTime)}</p>
-                                  <p className="text-xs text-muted-foreground">Show confirmation at the door</p>
+                                  <p className="text-sm text-green-400 font-semibold">Scheduled for {formatTime12(selectedTime)}</p>
+                                  <p className="text-xs text-muted-foreground">Added to your night plan</p>
                                 </div>
                               </motion.div>
                             )}
@@ -655,7 +610,7 @@ export default function PlanANight() {
                 </div>
 
                 {/* Footer */}
-                <div className="space-y-2 pt-3 border-t border-border">
+                <div className="space-y-2.5 pt-3 border-t border-border">
                   <button
                     onClick={() => { setSelectedVenue(null); setConfirmed(false); }}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-150"
@@ -663,6 +618,45 @@ export default function PlanANight() {
                     <Plus className="h-4 w-4" />
                     Add another stop
                   </button>
+
+                  {/* Payment — only show when plan has stops */}
+                  {plannedStops.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Payment
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setPayMethod('qpay')}
+                          className={cn(
+                            'flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150',
+                            payMethod === 'qpay'
+                              ? 'bg-primary/10 border-primary text-primary'
+                              : 'bg-card border-border text-muted-foreground hover:border-primary/30'
+                          )}
+                        >
+                          <Zap className="h-4 w-4" />
+                          QPay
+                        </button>
+                        <button
+                          onClick={() => setPayMethod('card')}
+                          className={cn(
+                            'flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150',
+                            payMethod === 'card'
+                              ? 'bg-primary/10 border-primary text-primary'
+                              : 'bg-card border-border text-muted-foreground hover:border-primary/30'
+                          )}
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Card
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <Button
                     className="w-full gradient-primary"
                     size="lg"
