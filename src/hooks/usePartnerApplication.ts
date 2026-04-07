@@ -219,6 +219,10 @@ export function useSubmitApplication() {
           completeness_score: completenessScore,
           fraud_flags: fraudFlags,
           risk_level: riskLevel,
+          // Belt-and-suspenders: ensure declaration fields are persisted even if
+          // the pre-submit draft save raced or was skipped.
+          declaration_confirmed: true,
+          declaration_confirmed_at: now,
           updated_at: now,
         })
         .eq('id', applicationId)

@@ -158,11 +158,23 @@ export default function PartnerApplyPage() {
       toast.error('Application not saved yet. Please try again.');
       return;
     }
+
+    // Persist the latest formData (including declaration_confirmed: true) before
+    // submitting — useSubmitApplication re-fetches from DB to validate, so the
+    // declaration flag must be in the DB before that fetch runs.
+    try {
+      await upsertDraft.mutateAsync({ ...formData, current_step: step });
+    } catch (err) {
+      console.error('[pre-submit save error]', err);
+      // upsertDraft's onError already showed the toast; abort submit
+      return;
+    }
+
     try {
       await submitApplication.mutateAsync(applicationId);
       navigate('/partner/apply/status', { replace: true });
     } catch {
-      // Error is toasted by hook
+      // Error toasted by hook
     }
   };
 
@@ -242,8 +254,11 @@ export default function PartnerApplyPage() {
           documents={documents}
           onBack={handleBack}
           onSubmit={handleSubmit}
-          isSubmitting={submitApplication.isPending}
+          isSubmitting={submitApplication.isPending || upsertDraft.isPending}
           onNavigateToField={navigateToField}
+          onDeclarationChange={(v) =>
+            setFormData((prev) => ({ ...prev, declaration_confirmed: v }))
+          }
         />
       )}
 

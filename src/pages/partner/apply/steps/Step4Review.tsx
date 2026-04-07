@@ -32,6 +32,8 @@ interface Step4ReviewProps {
   isSubmitting: boolean;
   /** Called when user clicks a missing-item error to jump to that field */
   onNavigateToField?: (key: string) => void;
+  /** Called whenever the declaration checkbox changes — lifts state into parent formData */
+  onDeclarationChange?: (value: boolean) => void;
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -165,8 +167,10 @@ export function Step4Review({
   onSubmit,
   isSubmitting,
   onNavigateToField,
+  onDeclarationChange,
 }: Step4ReviewProps) {
-  const [declaration, setDeclaration] = useState(false);
+  // Initialize from formData so a restored draft pre-checks the box
+  const [declaration, setDeclaration] = useState(formData.declaration_confirmed ?? false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const score = computeCompletenessScore(formData, documents);
@@ -359,13 +363,24 @@ export function Step4Review({
       )}
 
       {/* Declaration */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+      <div
+        className={[
+          'rounded-xl border p-5 transition-colors',
+          !declaration
+            ? 'border-amber-500/40 bg-amber-500/5'
+            : 'border-white/10 bg-white/5',
+        ].join(' ')}
+      >
         <p className="font-semibold text-foreground text-sm mb-3">Declaration</p>
         <label className="flex items-start gap-3 cursor-pointer group">
           <Checkbox
             id="declaration-checkbox"
             checked={declaration}
-            onCheckedChange={(v) => setDeclaration(!!v)}
+            onCheckedChange={(v) => {
+              const next = !!v;
+              setDeclaration(next);
+              onDeclarationChange?.(next);
+            }}
             className="mt-0.5 flex-shrink-0"
           />
           <span className="text-sm text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
@@ -374,6 +389,11 @@ export function Step4Review({
             account suspension and legal consequences.
           </span>
         </label>
+        {!declaration && (
+          <p className="mt-2 text-xs text-amber-400 pl-7">
+            You must accept this declaration before submitting.
+          </p>
+        )}
       </div>
 
       {/* Navigation */}
