@@ -691,7 +691,7 @@ export default function PartnerCalendar() {
                       className="w-full text-left p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 transition-colors"
                     >
                       <p className="text-xs font-medium text-amber-200">{b.guest_name ?? 'Guest'}</p>
-                      <p className="text-[10px] text-amber-300/70">{b.venues?.name} · {b.booking_date}</p>
+                      <p className="text-[10px] text-amber-300/70">{b.venues?.name ?? 'Venue'} · {b.booking_date}</p>
                     </button>
                   ))}
                 </div>
@@ -748,6 +748,7 @@ export default function PartnerCalendar() {
                           <p className="text-xs font-medium truncate">{b.guest_name ?? 'Guest'}</p>
                           <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{b.start_time?.slice(0, 5)}</span>
                         </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 pl-3.5 truncate">{b.venues?.name ?? 'Unknown Venue'}</p>
                       </button>
                     );
                   })}

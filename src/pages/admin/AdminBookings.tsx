@@ -65,6 +65,7 @@ type SortOption = 'date' | 'created_at' | 'start_time';
 
 interface BookingWithDetails {
   id: string;
+  user_id: string;
   booking_date: string;
   start_time: string;
   end_time: string;
@@ -138,7 +139,7 @@ export default function AdminBookings() {
 
     const { data, error: fetchError } = await supabase
       .from('bookings')
-      .select('*, venues:venue_id (id, name, city)')
+      .select('*, user_id, venues:venue_id (id, name, city)')
       .order('created_at', { ascending: false });
 
     if (fetchError) {

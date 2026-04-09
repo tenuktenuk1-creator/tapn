@@ -50,7 +50,7 @@ function computeBookingCount(
   date: string
 ) {
   return bookings.filter(
-    (b) => b.booking_date === date && b.status !== 'cancelled' && b.status !== 'rejected'
+    (b) => b.booking_date === date && b.status === 'confirmed'
   ).length;
 }
 

@@ -219,10 +219,10 @@ export default function AdminDashboard() {
           : b.status === 'cancelled' || b.status === 'rejected' ? 'booking_cancelled'
           : 'booking_created',
         message: b.status === 'confirmed'
-          ? `Booking confirmed — ${(b as any).venue?.name ?? 'Unknown Venue'}`
+          ? `Booking confirmed — ${(b as any).venues?.name ?? 'Unknown Venue'}`
           : b.status === 'cancelled' || b.status === 'rejected'
-          ? `Booking ${b.status} — ${(b as any).venue?.name ?? 'Unknown Venue'}`
-          : `New booking — ${(b as any).venue?.name ?? 'Unknown Venue'}`,
+          ? `Booking ${b.status} — ${(b as any).venues?.name ?? 'Unknown Venue'}`
+          : `New booking — ${(b as any).venues?.name ?? 'Unknown Venue'}`,
         meta: b.guest_name ?? 'Guest',
         time: formatDistanceToNow(parseISO(b.created_at), { addSuffix: true }),
       }));
