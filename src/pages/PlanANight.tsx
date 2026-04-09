@@ -229,18 +229,23 @@ export default function PlanANight() {
             <div className="container flex items-center justify-center py-3">
               {(['Discover', 'Schedule', 'Plan'] as const).map((label, i) => (
                 <div key={label} className="flex items-center">
-                  <div className="flex items-center gap-2 px-4">
+                  <div className={cn(
+                    'flex items-center gap-2 px-4 transition-opacity duration-300',
+                    panelStep === i ? 'opacity-100' : panelStep > i ? 'opacity-60' : 'opacity-30'
+                  )}>
                     <div className={cn(
                       'w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center transition-all duration-300',
-                      panelStep >= i
-                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/40'
-                        : 'bg-muted text-muted-foreground'
+                      panelStep === i
+                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/40 scale-110'
+                        : panelStep > i
+                          ? 'bg-primary/60 text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
                     )}>
                       {i + 1}
                     </div>
                     <span className={cn(
                       'text-xs font-semibold tracking-widest uppercase transition-colors duration-300',
-                      panelStep >= i ? 'text-foreground' : 'text-muted-foreground'
+                      panelStep === i ? 'text-foreground' : panelStep > i ? 'text-foreground/60' : 'text-muted-foreground'
                     )}>
                       {label}
                     </span>
@@ -249,11 +254,11 @@ export default function PlanANight() {
                     <div className="flex items-center">
                       <div className={cn(
                         'w-12 h-px transition-colors duration-500',
-                        panelStep > i ? 'bg-primary' : 'bg-border'
+                        panelStep > i ? 'bg-primary/50' : 'bg-border'
                       )} />
                       <ChevronRight className={cn(
                         'h-3 w-3 -ml-1 transition-colors duration-500',
-                        panelStep > i ? 'text-primary' : 'text-border'
+                        panelStep > i ? 'text-primary/50' : 'text-border'
                       )} />
                     </div>
                   )}
@@ -552,9 +557,9 @@ export default function PlanANight() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground/60">Your night is empty</p>
+                        <p className="text-sm font-semibold text-foreground/60">Start your night here</p>
                         <p className="text-xs mt-1 text-muted-foreground opacity-60">
-                          Select a venue and time to begin
+                          Pick a venue and time to get started
                         </p>
                       </div>
                     </div>
@@ -623,14 +628,6 @@ export default function PlanANight() {
 
                 {/* Footer */}
                 <div className="space-y-2.5 pt-3 border-t border-border">
-                  <button
-                    onClick={() => { setSelectedVenue(null); setConfirmed(false); }}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all duration-150"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add another stop
-                  </button>
-
                   {/* Payment — only show when plan has stops */}
                   {plannedStops.length > 0 && (
                     <div>
