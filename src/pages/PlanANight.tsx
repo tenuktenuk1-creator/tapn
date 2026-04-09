@@ -148,7 +148,11 @@ export default function PlanANight() {
     return venues.filter(v => {
       const matchesQuery  = !query || v.name.toLowerCase().includes(query.toLowerCase());
       const matchesFilter = activeFilters.length === 0 || activeFilters.every(f => {
-        if (f === 'open') return true;
+        if (f === 'open') {
+          // Actually check if venue is open right now
+          const hours = getOpenHours(v, today);
+          return hours !== 'Closed today' && hours !== '';
+        }
         return v.venue_type === f;
       });
       return matchesQuery && matchesFilter;
@@ -169,6 +173,14 @@ export default function PlanANight() {
 
   const confirmStop = () => {
     if (!selectedVenue || !selectedTime) return;
+    // Prevent duplicate: same venue + same time
+    const isDuplicate = plannedStops.some(
+      s => s.venue.id === selectedVenue.id && s.arrivalTime === selectedTime
+    );
+    if (isDuplicate) {
+      toast.error('This venue is already in your plan at this time');
+      return;
+    }
     const idx = plannedStops.length;
     setPlannedStops(prev => [...prev, {
       id:          crypto.randomUUID(),

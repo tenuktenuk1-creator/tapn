@@ -133,7 +133,7 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   if (loading) return <LoadingScreen />;
 
   if (user) {
-    if (redirect) return <Navigate to={redirect} replace />;
+    if (redirect && redirect.startsWith('/')) return <Navigate to={redirect} replace />;
 
     const defaultPath =
       role === 'admin'

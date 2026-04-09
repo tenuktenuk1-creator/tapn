@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Users, Clock, Loader2, CheckCircle, LogIn } from 'lucide-react';
-import { format, addDays } from 'date-fns';
+import { format, addDays, startOfDay } from 'date-fns';
 import { PublicVenue } from '@/types/venue';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -94,6 +94,7 @@ export function BookingForm({ venue }: BookingFormProps) {
     : [];
 
   // When date changes, reset to first valid slot
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (slots.length >= 2) {
       setStartTime(slots[0]);
@@ -102,16 +103,17 @@ export function BookingForm({ venue }: BookingFormProps) {
       setStartTime('');
       setEndTime('');
     }
-  }, [date]);
+  }, [date, slots.length]);
 
   // When startTime changes, reset end to next slot
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!startTime || slots.length === 0) return;
     const idx = slots.indexOf(startTime);
-    if (idx === -1) return;
+    if (idx === -1) { setEndTime(''); return; }
     const nextSlot = idx + 1 < slots.length ? slots[idx + 1] : closeTime;
     setEndTime(nextSlot || '');
-  }, [startTime]);
+  }, [startTime, closeTime]);
 
   useEffect(() => {
     if (user) fetchProfile();
@@ -252,7 +254,7 @@ export function BookingForm({ venue }: BookingFormProps) {
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => date < startOfDay(new Date())}
                   initialFocus
                 />
               </PopoverContent>
@@ -352,7 +354,7 @@ export function BookingForm({ venue }: BookingFormProps) {
                 mode="single"
                 selected={date}
                 onSelect={setDate}
-                disabled={(date) => date < new Date()}
+                disabled={(date) => date < startOfDay(new Date())}
                 initialFocus
               />
             </PopoverContent>
