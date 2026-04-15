@@ -1,24 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface VenueReview {
+export interface ReviewReply {
   id: string;
-  venue_id: string;
+  review_id: string;
   user_id: string;
-  rating: number;
-  comment: string | null;
-  visit_date: string | null;
-  helpful_count: number;
+  body: string;
   created_at: string;
   updated_at: string;
-  // Joined from profiles
   profiles?: {
     full_name: string | null;
     avatar_url: string | null;
   } | null;
 }
 
-// Fetch all reviews for a venue (public)
+export interface VenueReview {
+  id: string;
+  venue_id: string;
+  user_id: string;
+  rating: number;
+  comment: string | null;
+  images: string[] | null;
+  visit_date: string | null;
+  helpful_count: number;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  replies?: ReviewReply[];
+  user_has_voted_helpful?: boolean;
+}
+
+// Fetch all reviews for a venue (public) with replies and helpful status
 export function useVenueReviews(venueId: string | undefined) {
   return useQuery({
     queryKey: ['venue-reviews', venueId],
@@ -26,6 +41,8 @@ export function useVenueReviews(venueId: string | undefined) {
     staleTime: 0,
     refetchOnMount: 'always',
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data, error } = await supabase
         .from('venue_reviews')
         .select('*, profiles(full_name, avatar_url)')
@@ -33,7 +50,6 @@ export function useVenueReviews(venueId: string | undefined) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Profiles join-д асуудал гарвал profiles-гүйгээр дахин авна
         const { data: fallback, error: fallbackError } = await supabase
           .from('venue_reviews')
           .select('*')
@@ -43,7 +59,43 @@ export function useVenueReviews(venueId: string | undefined) {
         return (fallback ?? []) as VenueReview[];
       }
 
-      return (data ?? []) as VenueReview[];
+      const reviews = (data ?? []) as VenueReview[];
+
+      // Fetch replies for all reviews
+      const reviewIds = reviews.map(r => r.id);
+      if (reviewIds.length > 0) {
+        const { data: replies } = await supabase
+          .from('review_replies')
+          .select('*, profiles(full_name, avatar_url)')
+          .in('review_id', reviewIds)
+          .order('created_at', { ascending: true });
+
+        const repliesByReview = new Map<string, ReviewReply[]>();
+        for (const reply of (replies ?? []) as ReviewReply[]) {
+          const arr = repliesByReview.get(reply.review_id) ?? [];
+          arr.push(reply);
+          repliesByReview.set(reply.review_id, arr);
+        }
+        for (const review of reviews) {
+          review.replies = repliesByReview.get(review.id) ?? [];
+        }
+
+        // Fetch helpful votes for current user
+        if (user) {
+          const { data: votes } = await supabase
+            .from('review_helpful')
+            .select('review_id')
+            .in('review_id', reviewIds)
+            .eq('user_id', user.id);
+
+          const votedSet = new Set((votes ?? []).map(v => (v as { review_id: string }).review_id));
+          for (const review of reviews) {
+            review.user_has_voted_helpful = votedSet.has(review.id);
+          }
+        }
+      }
+
+      return reviews;
     },
   });
 }
@@ -72,7 +124,7 @@ export function useMyReview(venueId: string | undefined) {
   });
 }
 
-// Create or update a review
+// Create or update a review (with optional images)
 export function useUpsertReview() {
   const qc = useQueryClient();
 
@@ -81,31 +133,31 @@ export function useUpsertReview() {
       venueId,
       rating,
       comment,
+      images,
       existingId,
     }: {
       venueId: string;
       rating: number;
       comment: string;
+      images?: string[];
       existingId?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in to leave a review');
 
       if (existingId) {
-        // Update existing review
         const { data, error } = await supabase
           .from('venue_reviews')
-          .update({ rating, comment, updated_at: new Date().toISOString() })
+          .update({ rating, comment, images: images ?? null, updated_at: new Date().toISOString() })
           .eq('id', existingId)
           .select()
           .single();
         if (error) throw error;
         return data;
       } else {
-        // Create new review
         const { data, error } = await supabase
           .from('venue_reviews')
-          .insert({ venue_id: venueId, user_id: user.id, rating, comment })
+          .insert({ venue_id: venueId, user_id: user.id, rating, comment, images: images ?? null })
           .select()
           .single();
         if (error) throw error;
@@ -134,11 +186,95 @@ export function useDeleteReview() {
       if (error) throw error;
       return { venueId };
     },
-    onSuccess: (res, vars) => {
+    onSuccess: (_res, vars) => {
       qc.invalidateQueries({ queryKey: ['venue-reviews', vars.venueId] });
       qc.invalidateQueries({ queryKey: ['my-review', vars.venueId] });
       qc.invalidateQueries({ queryKey: ['public-venue', vars.venueId] });
       qc.invalidateQueries({ queryKey: ['public-venues'] });
+    },
+  });
+}
+
+// ─── Reply hooks ──────────────────────────────────────────────────────────────
+
+export function useCreateReply() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ reviewId, venueId, body }: { reviewId: string; venueId: string; body: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Must be logged in to reply');
+
+      const { data, error } = await supabase
+        .from('review_replies')
+        .insert({ review_id: reviewId, user_id: user.id, body })
+        .select('*, profiles(full_name, avatar_url)')
+        .single();
+      if (error) throw error;
+      return { data, venueId };
+    },
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['venue-reviews', vars.venueId] });
+    },
+  });
+}
+
+export function useDeleteReply() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ replyId, venueId }: { replyId: string; venueId: string }) => {
+      const { error } = await supabase
+        .from('review_replies')
+        .delete()
+        .eq('id', replyId);
+      if (error) throw error;
+    },
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['venue-reviews', vars.venueId] });
+    },
+  });
+}
+
+// ─── Helpful vote hooks ───────────────────────────────────────────────────────
+
+export function useToggleHelpful() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ reviewId, venueId, hasVoted }: { reviewId: string; venueId: string; hasVoted: boolean }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Must be logged in');
+
+      if (hasVoted) {
+        // Remove vote
+        await supabase.from('review_helpful').delete().eq('review_id', reviewId).eq('user_id', user.id);
+        await supabase.from('venue_reviews').update({ helpful_count: Math.max(0, -1) }).eq('id', reviewId);
+        // Decrement
+        await supabase.rpc('decrement_helpful', { rid: reviewId }).catch(() => {
+          // Fallback: manual update
+          supabase.from('venue_reviews').select('helpful_count').eq('id', reviewId).single().then(({ data }) => {
+            if (data) supabase.from('venue_reviews').update({ helpful_count: Math.max(0, (data.helpful_count ?? 1) - 1) }).eq('id', reviewId);
+          });
+        });
+      } else {
+        // Add vote
+        await supabase.from('review_helpful').insert({ review_id: reviewId, user_id: user.id });
+      }
+
+      // Update helpful_count on the review
+      const { count } = await supabase
+        .from('review_helpful')
+        .select('*', { count: 'exact', head: true })
+        .eq('review_id', reviewId);
+
+      await supabase
+        .from('venue_reviews')
+        .update({ helpful_count: count ?? 0 })
+        .eq('id', reviewId);
+    },
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['venue-reviews', vars.venueId] });
     },
   });
 }

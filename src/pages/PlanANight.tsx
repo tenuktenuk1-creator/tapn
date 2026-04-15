@@ -297,16 +297,6 @@ export default function PlanANight() {
                       ))}
                     </div>
 
-                    {/* Search bar at bottom */}
-                    <div className="relative mt-4">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input
-                        value={query}
-                        onChange={e => { setQuery(e.target.value); if (e.target.value) setSelectedCategory('__search'); }}
-                        placeholder="Or search venues directly..."
-                        className="w-full pl-10 pr-3 py-3 text-sm bg-card border border-border rounded-2xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
-                      />
-                    </div>
                   </div>
                 ) : (
                   /* ── Venue list after category picked ── */
