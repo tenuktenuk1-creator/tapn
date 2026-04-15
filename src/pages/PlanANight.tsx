@@ -91,12 +91,11 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   pool_snooker: { bg: 'bg-blue-500/15',   text: 'text-blue-400',   dot: 'bg-blue-400'   },
 };
 
-const FILTER_TAGS = [
-  { label: '✦ Open Now',  key: 'open'         },
-  { label: 'Lounge',      key: 'lounge'        },
-  { label: 'Karaoke',     key: 'karaoke'       },
-  { label: 'Cafe',        key: 'cafe'          },
-  { label: 'Billiards',   key: 'pool_snooker'  },
+const CATEGORIES: { label: string; key: string; icon: string }[] = [
+  { label: 'Karaoke',   key: 'karaoke',       icon: '🎤' },
+  { label: 'Lounge',    key: 'lounge',        icon: '🍸' },
+  { label: 'Billiards', key: 'pool_snooker',  icon: '🎱' },
+  { label: 'Cafe',      key: 'cafe',          icon: '☕' },
 ];
 
 // ─── Panel header ─────────────────────────────────────────────────────────────
@@ -130,9 +129,9 @@ export default function PlanANight() {
 
   const today = addDays(new Date(), 0);
 
-  const [query,         setQuery]         = useState('');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [selectedVenue, setSelectedVenue] = useState<PublicVenue | null>(null);
+  const [query,            setQuery]            = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedVenue,    setSelectedVenue]    = useState<PublicVenue | null>(null);
   const [selectedTime,  setSelectedTime]  = useState<string>('');
   const [payMethod,     setPayMethod]     = useState<'qpay' | 'card'>('qpay');
   const [confirmed,     setConfirmed]     = useState(false);
@@ -146,24 +145,11 @@ export default function PlanANight() {
   const filteredVenues = useMemo(() => {
     if (!venues) return [];
     return venues.filter(v => {
-      const matchesQuery  = !query || v.name.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter = activeFilters.length === 0 || activeFilters.every(f => {
-        if (f === 'open') {
-          // Actually check if venue is open right now
-          const hours = getOpenHours(v, today);
-          return hours !== 'Closed today' && hours !== '';
-        }
-        return v.venue_type === f;
-      });
-      return matchesQuery && matchesFilter;
+      const matchesQuery    = !query || v.name.toLowerCase().includes(query.toLowerCase());
+      const matchesCategory = !selectedCategory || selectedCategory === '__search' || v.venue_type === selectedCategory;
+      return matchesQuery && matchesCategory;
     });
-  }, [venues, query, activeFilters]);
-
-  const toggleFilter = (key: string) => {
-    setActiveFilters(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
-  };
+  }, [venues, query, selectedCategory]);
 
   const selectVenue = (venue: PublicVenue) => {
     setSelectedVenue(venue);
@@ -271,109 +257,154 @@ export default function PlanANight() {
           <div className="container py-6">
             <div className="grid lg:grid-cols-3 gap-5 h-[calc(100vh-172px)]">
 
-              {/* ── LEFT: DISCOVER ──────────────────────────────────────── */}
+              {/* ── LEFT: CHOOSE A CATEGORY ─────────────────────────────── */}
               <div className="flex flex-col overflow-hidden">
-                <PanelLabel step={1} label="Discover" active={panelStep >= 0} />
+                <PanelLabel step={1} label="Choose a Category" active={panelStep >= 0} />
 
-                {/* Filters */}
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {FILTER_TAGS.map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => toggleFilter(f.key)}
-                      className={cn(
-                        'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200',
-                        activeFilters.includes(f.key)
-                          ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/30'
-                          : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/30'
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+                {!selectedCategory ? (
+                  /* ── Category selection ── */
+                  <div className="flex-1 flex flex-col">
+                    <p className="text-sm text-muted-foreground mb-4">Start building your night</p>
 
-                {/* Search */}
-                <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <input
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    placeholder="Search clubs, bars, lounges..."
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
-                  />
-                </div>
-
-                {/* Venue list */}
-                <div
-                  className="flex-1 overflow-y-auto space-y-2"
-                  style={{ scrollbarWidth: 'none' }}
-                >
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="h-20 rounded-2xl bg-card animate-pulse" />
-                    ))
-                  ) : filteredVenues.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground text-sm">
-                      No venues found
+                    <div className="grid grid-cols-2 gap-3 mb-auto">
+                      {CATEGORIES.map((cat, i) => (
+                        <motion.button
+                          key={cat.key}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.07, type: 'spring', stiffness: 300, damping: 24 }}
+                          whileHover={{ scale: 1.03, borderColor: 'rgba(236,72,153,0.5)' }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setSelectedCategory(cat.key)}
+                          className="relative rounded-2xl border border-border bg-card p-8 flex flex-col items-center justify-center gap-3 transition-all duration-200 hover:shadow-[0_0_24px_rgba(236,72,153,0.15)] hover:border-primary/40"
+                        >
+                          <span className="text-4xl">{cat.icon}</span>
+                          <span className="text-sm font-bold text-foreground">{cat.label}</span>
+                        </motion.button>
+                      ))}
                     </div>
-                  ) : filteredVenues.map(venue => {
-                    const isActive = selectedVenue?.id === venue.id;
-                    const isAdded  = plannedStops.some(s => s.venue.id === venue.id);
-                    const hours    = getOpenHours(venue, today);
-                    const isClosed = hours === 'Closed today';
-                    const statusLabel = isClosed ? 'Closed'
-                      : venue.busy_status === 'busy' ? 'Busy'
-                      : venue.busy_status === 'moderate' ? 'Popular' : 'Open';
-                    const statusColor = isClosed ? 'text-red-400'
-                      : venue.busy_status === 'busy' ? 'text-yellow-400'
-                      : venue.busy_status === 'moderate' ? 'text-pink-400' : 'text-green-400';
 
-                    return (
-                      <motion.button
-                        key={venue.id}
-                        onClick={() => selectVenue(venue)}
-                        whileTap={{ scale: 0.985 }}
-                        className={cn(
-                          'w-full text-left rounded-2xl px-4 py-3.5 border transition-all duration-200',
-                          isActive
-                            ? 'bg-primary/10 border-primary/40'
-                            : 'bg-card border-border hover:border-primary/25'
-                        )}
+                    {/* Search bar at bottom */}
+                    <div className="relative mt-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <input
+                        value={query}
+                        onChange={e => { setQuery(e.target.value); if (e.target.value) setSelectedCategory('__search'); }}
+                        placeholder="Search venues directly..."
+                        className="w-full pl-9 pr-3 py-2.5 text-sm bg-card border border-border rounded-xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Venue list after category picked ── */
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    {/* Active category chip + back */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <button
+                        onClick={() => { setSelectedCategory(null); setQuery(''); }}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        {/* Row 1: name + status */}
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-bold text-[15px] text-foreground truncate leading-tight">
-                            {venue.name}
-                          </p>
-                          <span className={cn('text-xs font-semibold flex-shrink-0', statusColor)}>
-                            {statusLabel}
-                          </span>
+                        &larr; Back
+                      </button>
+                      {selectedCategory !== '__search' && (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground border border-primary shadow-sm shadow-primary/30">
+                          {CATEGORIES.find(c => c.key === selectedCategory)?.icon}{' '}
+                          {CATEGORIES.find(c => c.key === selectedCategory)?.label}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Search within category */}
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <input
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        placeholder="Search venues..."
+                        className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
+                      />
+                    </div>
+
+                    {/* Venue list */}
+                    <div
+                      className="flex-1 overflow-y-auto space-y-2"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {isLoading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                          <div key={i} className="h-20 rounded-2xl bg-card animate-pulse" />
+                        ))
+                      ) : filteredVenues.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground text-sm">
+                          No venues found
                         </div>
+                      ) : filteredVenues.map(venue => {
+                        const isActive = selectedVenue?.id === venue.id;
+                        const isAdded  = plannedStops.some(s => s.venue.id === venue.id);
+                        const hours    = getOpenHours(venue, today);
+                        const isClosed = hours === 'Closed today';
+                        const statusLabel = isClosed ? 'Closed'
+                          : venue.busy_status === 'busy' ? 'Busy'
+                          : venue.busy_status === 'moderate' ? 'Popular' : 'Open';
+                        const statusColor = isClosed ? 'text-red-400'
+                          : venue.busy_status === 'busy' ? 'text-yellow-400'
+                          : venue.busy_status === 'moderate' ? 'text-pink-400' : 'text-green-400';
 
-                        {/* Row 2: type · hours */}
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {venueTypeLabels[venue.venue_type]}
-                          {hours && ` · ${hours}`}
-                        </p>
-
-                        {/* Row 3: price */}
-                        {venue.price_per_hour && (
-                          <p className="text-[15px] font-bold text-primary mt-1.5">
-                            ₮{venue.price_per_hour.toLocaleString()}
-                          </p>
-                        )}
-
-                        {isAdded && (
-                          <div className="mt-2 flex items-center gap-1.5 text-xs text-primary/70 font-medium">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                            In your plan
-                          </div>
-                        )}
-                      </motion.button>
-                    );
-                  })}
-                </div>
+                        return (
+                          <motion.button
+                            key={venue.id}
+                            onClick={() => selectVenue(venue)}
+                            whileTap={{ scale: 0.985 }}
+                            className={cn(
+                              'w-full text-left rounded-2xl border transition-all duration-200 overflow-hidden',
+                              isActive
+                                ? 'bg-primary/10 border-primary/40'
+                                : 'bg-card border-border hover:border-primary/25'
+                            )}
+                          >
+                            <div className="flex">
+                              {/* Thumbnail */}
+                              {venue.images?.[0] && (
+                                <div className="w-20 h-full flex-shrink-0">
+                                  <img
+                                    src={venue.images[0]}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0 px-3.5 py-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="font-bold text-[15px] text-foreground truncate leading-tight">
+                                    {venue.name}
+                                  </p>
+                                  <span className={cn('text-xs font-semibold flex-shrink-0', statusColor)}>
+                                    {statusLabel}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                  {venueTypeLabels[venue.venue_type]}
+                                  {hours && ` · ${hours}`}
+                                </p>
+                                {venue.price_per_hour && (
+                                  <p className="text-[15px] font-bold text-primary mt-1.5">
+                                    ₮{venue.price_per_hour.toLocaleString()}
+                                  </p>
+                                )}
+                                {isAdded && (
+                                  <div className="mt-2 flex items-center gap-1.5 text-xs text-primary/70 font-medium">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                    In your plan
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── CENTER: BOOK ────────────────────────────────────────── */}
@@ -388,39 +419,72 @@ export default function PlanANight() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground/70">No venue selected</p>
-                        <p className="text-xs mt-1 opacity-50">Pick one from Discover</p>
+                        <p className="text-xs mt-1 opacity-50">Pick a category first</p>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {/* Selected venue card */}
                       <div className="rounded-2xl border border-primary/20 overflow-hidden">
-                        {/* Header gradient */}
-                        <div className="bg-gradient-to-br from-primary/25 via-primary/10 to-transparent p-4">
-                          <div className="flex items-start gap-3">
-                            <div className={cn(
-                              'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0',
-                              (TYPE_COLORS[selectedVenue.venue_type] ?? TYPE_COLORS.lounge).bg
-                            )}>
-                              {selectedVenue.venue_type === 'karaoke' ? '🎤'
-                                : selectedVenue.venue_type === 'cafe' ? '☕'
-                                : selectedVenue.venue_type === 'pool_snooker' ? '🎱'
-                                : '🍸'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-display font-bold text-base text-foreground leading-tight">
-                                {selectedVenue.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {venueTypeLabels[selectedVenue.venue_type]}
-                                {selectedVenue.city && ` · ${selectedVenue.city}`}
-                              </p>
+                        {/* Cover image or gradient header */}
+                        {selectedVenue.images?.[0] ? (
+                          <div className="relative">
+                            <img
+                              src={selectedVenue.images[0]}
+                              alt={selectedVenue.name}
+                              className="w-full h-36 object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                            <div className="absolute bottom-0 left-0 right-0 p-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">
+                                  {selectedVenue.venue_type === 'karaoke' ? '🎤'
+                                    : selectedVenue.venue_type === 'cafe' ? '☕'
+                                    : selectedVenue.venue_type === 'pool_snooker' ? '🎱'
+                                    : '🍸'}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-display font-bold text-base text-white leading-tight">
+                                    {selectedVenue.name}
+                                  </p>
+                                  <p className="text-xs text-white/70">
+                                    {venueTypeLabels[selectedVenue.venue_type]}
+                                    {selectedVenue.city && ` · ${selectedVenue.city}`}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                           </div>
+                        ) : (
+                          <div className="bg-gradient-to-br from-primary/25 via-primary/10 to-transparent p-4">
+                            <div className="flex items-start gap-3">
+                              <div className={cn(
+                                'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0',
+                                (TYPE_COLORS[selectedVenue.venue_type] ?? TYPE_COLORS.lounge).bg
+                              )}>
+                                {selectedVenue.venue_type === 'karaoke' ? '🎤'
+                                  : selectedVenue.venue_type === 'cafe' ? '☕'
+                                  : selectedVenue.venue_type === 'pool_snooker' ? '🎱'
+                                  : '🍸'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-display font-bold text-base text-foreground leading-tight">
+                                  {selectedVenue.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {venueTypeLabels[selectedVenue.venue_type]}
+                                  {selectedVenue.city && ` · ${selectedVenue.city}`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                          <div className="mt-3 grid grid-cols-2 gap-2">
+                        {/* Price & Hours */}
+                        <div className="p-4 pt-3">
+                          <div className="grid grid-cols-2 gap-2">
                             {selectedVenue.price_per_hour && (
-                              <div className="bg-black/20 rounded-xl px-3 py-2">
+                              <div className="bg-card rounded-xl px-3 py-2 border border-border">
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Price</p>
                                 <p className="text-sm font-bold text-primary">
                                   ₮{selectedVenue.price_per_hour.toLocaleString()}
@@ -428,9 +492,9 @@ export default function PlanANight() {
                                 </p>
                               </div>
                             )}
-                            <div className="bg-black/20 rounded-xl px-3 py-2">
+                            <div className="bg-card rounded-xl px-3 py-2 border border-border">
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Hours</p>
-                              <p className="text-sm font-semibold text-foreground/90 text-xs">
+                              <p className="text-sm font-semibold text-foreground/90">
                                 {getOpenHours(selectedVenue, today)}
                               </p>
                             </div>
