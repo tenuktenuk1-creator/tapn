@@ -64,11 +64,26 @@ export function useVenueReviews(venueId: string | undefined) {
       // Fetch replies for all reviews
       const reviewIds = reviews.map(r => r.id);
       if (reviewIds.length > 0) {
-        const { data: replies } = await supabase
+        const { data: replies, error: repliesError } = await supabase
           .from('review_replies')
-          .select('*, profiles(full_name, avatar_url)')
+          .select('*')
           .in('review_id', reviewIds)
           .order('created_at', { ascending: true });
+
+        // Fetch profiles for reply authors
+        if (!repliesError && replies && replies.length > 0) {
+          const userIds = [...new Set(replies.map(r => r.user_id))];
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', userIds);
+
+          const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
+          for (const reply of replies) {
+            const prof = profileMap.get(reply.user_id);
+            (reply as ReviewReply).profiles = prof ? { full_name: prof.full_name, avatar_url: prof.avatar_url } : null;
+          }
+        }
 
         const repliesByReview = new Map<string, ReviewReply[]>();
         for (const reply of (replies ?? []) as ReviewReply[]) {
@@ -208,7 +223,7 @@ export function useCreateReply() {
       const { data, error } = await supabase
         .from('review_replies')
         .insert({ review_id: reviewId, user_id: user.id, body })
-        .select('*, profiles(full_name, avatar_url)')
+        .select()
         .single();
       if (error) throw error;
       return { data, venueId };
