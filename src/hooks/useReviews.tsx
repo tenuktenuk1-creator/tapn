@@ -272,22 +272,29 @@ export function useToggleHelpful() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ reviewId, venueId, hasVoted }: { reviewId: string; venueId: string; hasVoted: boolean }) => {
+    mutationFn: async ({ reviewId, venueId }: { reviewId: string; venueId: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
 
-      if (hasVoted) {
-        const { error } = await supabase
+      // Check if user already voted
+      const { data: existing } = await supabase
+        .from('review_helpful')
+        .select('id')
+        .eq('review_id', reviewId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        // Remove vote
+        await supabase
           .from('review_helpful')
           .delete()
-          .eq('review_id', reviewId)
-          .eq('user_id', user.id);
-        if (error) throw error;
+          .eq('id', existing.id);
       } else {
-        const { error } = await supabase
+        // Add vote
+        await supabase
           .from('review_helpful')
           .insert({ review_id: reviewId, user_id: user.id });
-        if (error) throw error;
       }
     },
     onSuccess: (_res, vars) => {

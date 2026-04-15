@@ -148,7 +148,8 @@ function InlineReplyForm({
     try {
       await createReply.mutateAsync({ reviewId, venueId, body: body.trim() });
       setBody('');
-    } catch {
+    } catch (err) {
+      console.error('Reply error:', err);
       toast.error('Failed to post reply');
     }
   };
@@ -203,11 +204,7 @@ function ReviewCard({
   const handleHelpful = async () => {
     if (!isLoggedIn) { toast.error('Sign in to vote'); return; }
     try {
-      await toggleHelpful.mutateAsync({
-        reviewId: review.id,
-        venueId,
-        hasVoted: review.user_has_voted_helpful ?? false,
-      });
+      await toggleHelpful.mutateAsync({ reviewId: review.id, venueId });
     } catch {
       toast.error('Failed to update vote');
     }
