@@ -6,8 +6,6 @@ import {
   Building2,
   CalendarDays,
   BookOpen,
-  UtensilsCrossed,
-  Megaphone,
   Settings,
   Menu,
   X,
@@ -24,8 +22,6 @@ const NAV_ITEMS = [
   { label: 'Venues',     href: '/partner/venues',       icon: Building2       },
   { label: 'Bookings',   href: '/partner/bookings',     icon: BookOpen        },
   { label: 'Calendar',   href: '/partner/calendar',     icon: CalendarDays    },
-  { label: 'Menu / POS', href: '/partner/menu',         icon: UtensilsCrossed },
-  { label: 'Promotions', href: '/partner/promotions',   icon: Megaphone       },
   { label: 'Settings',   href: '/partner/settings',     icon: Settings        },
 ] as const;
 
