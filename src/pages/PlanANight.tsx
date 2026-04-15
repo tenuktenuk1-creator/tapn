@@ -7,6 +7,7 @@ import {
   Search, Plus, Trash2, Clock, MapPin,
   Share2, Zap, Music, Coffee, Star,
   CreditCard, ChevronRight, CalendarDays,
+  Mic, Wine, CircleDot, Disc3,
 } from 'lucide-react';
 import { useVenues } from '@/hooks/useVenues';
 import { useAuth } from '@/hooks/useAuth';
@@ -91,11 +92,11 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   pool_snooker: { bg: 'bg-blue-500/15',   text: 'text-blue-400',   dot: 'bg-blue-400'   },
 };
 
-const CATEGORIES: { label: string; key: string; icon: string }[] = [
-  { label: 'Karaoke',   key: 'karaoke',       icon: '🎤' },
-  { label: 'Lounge',    key: 'lounge',        icon: '🍸' },
-  { label: 'Billiards', key: 'pool_snooker',  icon: '🎱' },
-  { label: 'Cafe',      key: 'cafe',          icon: '☕' },
+const CATEGORIES = [
+  { label: 'Karaoke',        key: 'karaoke',      sub: 'Sing the night away',      Icon: Mic,       glow: '#d946ef', bg: 'rgba(217,70,239,0.08)', activeBg: 'rgba(217,70,239,0.18)' },
+  { label: 'Lounge & Bars',  key: 'lounge',       sub: 'Cocktails & chill vibes',  Icon: Wine,      glow: '#818cf8', bg: 'rgba(129,140,248,0.08)', activeBg: 'rgba(129,140,248,0.18)' },
+  { label: 'Billiards',      key: 'pool_snooker', sub: "Rack 'em up",              Icon: CircleDot, glow: '#34d399', bg: 'rgba(52,211,153,0.08)',  activeBg: 'rgba(52,211,153,0.18)' },
+  { label: 'Cafe',           key: 'cafe',         sub: 'Coffee & conversation',    Icon: Coffee,    glow: '#fbbf24', bg: 'rgba(251,191,36,0.08)',  activeBg: 'rgba(251,191,36,0.18)' },
 ];
 
 // ─── Panel header ─────────────────────────────────────────────────────────────
@@ -259,39 +260,51 @@ export default function PlanANight() {
 
               {/* ── LEFT: CHOOSE A CATEGORY ─────────────────────────────── */}
               <div className="flex flex-col overflow-hidden">
-                <PanelLabel step={1} label="Choose a Category" active={panelStep >= 0} />
+                <PanelLabel step={1} label="Discover" active={panelStep >= 0} />
 
                 {!selectedCategory ? (
                   /* ── Category selection ── */
                   <div className="flex-1 flex flex-col">
-                    <p className="text-sm text-muted-foreground mb-4">Start building your night</p>
+                    <div className="text-center mb-5">
+                      <h2 className="text-lg font-semibold text-foreground">What's your first stop?</h2>
+                      <p className="text-xs text-muted-foreground mt-1">Pick a vibe to get started</p>
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-auto">
+                    <div className="flex flex-col gap-2.5 mb-auto">
                       {CATEGORIES.map((cat, i) => (
                         <motion.button
                           key={cat.key}
-                          initial={{ opacity: 0, y: 16 }}
+                          initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.07, type: 'spring', stiffness: 300, damping: 24 }}
-                          whileHover={{ scale: 1.03, borderColor: 'rgba(236,72,153,0.5)' }}
-                          whileTap={{ scale: 0.96 }}
+                          transition={{ delay: i * 0.06, type: 'spring', stiffness: 300, damping: 24 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => setSelectedCategory(cat.key)}
-                          className="relative rounded-2xl border border-border bg-card p-8 flex flex-col items-center justify-center gap-3 transition-all duration-200 hover:shadow-[0_0_24px_rgba(236,72,153,0.15)] hover:border-primary/40"
+                          className="w-full rounded-2xl border border-border bg-card px-4 py-3.5 flex items-center gap-3.5 transition-all duration-200 hover:border-[--hover-glow] group"
+                          style={{ '--hover-glow': cat.glow + '66' } as React.CSSProperties}
                         >
-                          <span className="text-4xl">{cat.icon}</span>
-                          <span className="text-sm font-bold text-foreground">{cat.label}</span>
+                          <div
+                            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200"
+                            style={{ background: cat.bg }}
+                          >
+                            <cat.Icon className="h-5 w-5" style={{ color: cat.glow }} />
+                          </div>
+                          <div className="text-left flex-1">
+                            <p className="text-sm font-medium text-foreground">{cat.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{cat.sub}</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-border group-hover:text-muted-foreground transition-colors" />
                         </motion.button>
                       ))}
                     </div>
 
                     {/* Search bar at bottom */}
                     <div className="relative mt-4">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <input
                         value={query}
                         onChange={e => { setQuery(e.target.value); if (e.target.value) setSelectedCategory('__search'); }}
-                        placeholder="Search venues directly..."
-                        className="w-full pl-9 pr-3 py-2.5 text-sm bg-card border border-border rounded-xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
+                        placeholder="Or search venues directly..."
+                        className="w-full pl-10 pr-3 py-3 text-sm bg-card border border-border rounded-2xl outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-colors"
                       />
                     </div>
                   </div>
@@ -299,19 +312,26 @@ export default function PlanANight() {
                   /* ── Venue list after category picked ── */
                   <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Active category chip + back */}
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2.5 mb-3">
                       <button
-                        onClick={() => { setSelectedCategory(null); setQuery(''); }}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => { setSelectedCategory(null); setQuery(''); setSelectedVenue(null); }}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                       >
-                        &larr; Back
+                        <ChevronRight className="h-3 w-3 rotate-180" />
+                        Back
                       </button>
-                      {selectedCategory !== '__search' && (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground border border-primary shadow-sm shadow-primary/30">
-                          {CATEGORIES.find(c => c.key === selectedCategory)?.icon}{' '}
-                          {CATEGORIES.find(c => c.key === selectedCategory)?.label}
-                        </span>
-                      )}
+                      {selectedCategory !== '__search' && (() => {
+                        const cat = CATEGORIES.find(c => c.key === selectedCategory);
+                        return cat ? (
+                          <span
+                            className="px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5"
+                            style={{ background: cat.bg, color: cat.glow, border: `1px solid ${cat.glow}44` }}
+                          >
+                            <cat.Icon className="h-3 w-3" />
+                            {cat.label}
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
 
                     {/* Search within category */}
@@ -364,35 +384,39 @@ export default function PlanANight() {
                           >
                             <div className="flex">
                               {/* Thumbnail */}
-                              {venue.images?.[0] && (
-                                <div className="w-20 h-full flex-shrink-0">
+                              {venue.images?.[0] ? (
+                                <div className="w-20 flex-shrink-0">
                                   <img
                                     src={venue.images[0]}
                                     alt=""
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover min-h-[80px]"
                                   />
+                                </div>
+                              ) : (
+                                <div className="w-20 flex-shrink-0 bg-card flex items-center justify-center border-r border-border">
+                                  <MapPin className="h-5 w-5 text-muted-foreground/30" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0 px-3.5 py-3">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="font-bold text-[15px] text-foreground truncate leading-tight">
+                                  <p className="font-semibold text-sm text-foreground truncate leading-tight">
                                     {venue.name}
                                   </p>
-                                  <span className={cn('text-xs font-semibold flex-shrink-0', statusColor)}>
+                                  <span className={cn('text-[10px] font-semibold flex-shrink-0', statusColor)}>
                                     {statusLabel}
                                   </span>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-0.5">
+                                <p className="text-xs text-muted-foreground mt-0.5">
                                   {venueTypeLabels[venue.venue_type]}
                                   {hours && ` · ${hours}`}
                                 </p>
                                 {venue.price_per_hour && (
-                                  <p className="text-[15px] font-bold text-primary mt-1.5">
+                                  <p className="text-sm font-bold text-primary mt-1">
                                     ₮{venue.price_per_hour.toLocaleString()}
                                   </p>
                                 )}
                                 {isAdded && (
-                                  <div className="mt-2 flex items-center gap-1.5 text-xs text-primary/70 font-medium">
+                                  <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-primary/70 font-medium">
                                     <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                     In your plan
                                   </div>
@@ -436,13 +460,16 @@ export default function PlanANight() {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                             <div className="absolute bottom-0 left-0 right-0 p-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">
-                                  {selectedVenue.venue_type === 'karaoke' ? '🎤'
-                                    : selectedVenue.venue_type === 'cafe' ? '☕'
-                                    : selectedVenue.venue_type === 'pool_snooker' ? '🎱'
-                                    : '🍸'}
-                                </span>
+                              <div className="flex items-center gap-2.5">
+                                {(() => {
+                                  const cat = CATEGORIES.find(c => c.key === selectedVenue.venue_type);
+                                  const CatIcon = cat?.Icon ?? Wine;
+                                  return (
+                                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: cat?.activeBg ?? 'rgba(129,140,248,0.18)' }}>
+                                      <CatIcon className="h-4.5 w-4.5" style={{ color: cat?.glow ?? '#818cf8' }} />
+                                    </div>
+                                  );
+                                })()}
                                 <div className="min-w-0">
                                   <p className="font-display font-bold text-base text-white leading-tight">
                                     {selectedVenue.name}
@@ -458,15 +485,18 @@ export default function PlanANight() {
                         ) : (
                           <div className="bg-gradient-to-br from-primary/25 via-primary/10 to-transparent p-4">
                             <div className="flex items-start gap-3">
-                              <div className={cn(
-                                'w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0',
-                                (TYPE_COLORS[selectedVenue.venue_type] ?? TYPE_COLORS.lounge).bg
-                              )}>
-                                {selectedVenue.venue_type === 'karaoke' ? '🎤'
-                                  : selectedVenue.venue_type === 'cafe' ? '☕'
-                                  : selectedVenue.venue_type === 'pool_snooker' ? '🎱'
-                                  : '🍸'}
-                              </div>
+                              {(() => {
+                                const cat = CATEGORIES.find(c => c.key === selectedVenue.venue_type);
+                                const CatIcon = cat?.Icon ?? Wine;
+                                return (
+                                  <div
+                                    className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                                    style={{ background: cat?.bg ?? 'rgba(129,140,248,0.08)' }}
+                                  >
+                                    <CatIcon className="h-5 w-5" style={{ color: cat?.glow ?? '#818cf8' }} />
+                                  </div>
+                                );
+                              })()}
                               <div className="flex-1 min-w-0">
                                 <p className="font-display font-bold text-base text-foreground leading-tight">
                                   {selectedVenue.name}
