@@ -95,7 +95,22 @@ export function useVenueReviews(venueId: string | undefined) {
           review.replies = repliesByReview.get(review.id) ?? [];
         }
 
-        // Fetch helpful votes for current user
+        // Fetch helpful vote counts from review_helpful table
+        const { data: helpfulCounts } = await supabase
+          .from('review_helpful')
+          .select('review_id')
+          .in('review_id', reviewIds);
+
+        const countMap = new Map<string, number>();
+        for (const h of (helpfulCounts ?? [])) {
+          const rid = (h as { review_id: string }).review_id;
+          countMap.set(rid, (countMap.get(rid) ?? 0) + 1);
+        }
+        for (const review of reviews) {
+          review.helpful_count = countMap.get(review.id) ?? 0;
+        }
+
+        // Fetch current user's helpful votes
         if (user) {
           const { data: votes } = await supabase
             .from('review_helpful')
@@ -262,31 +277,18 @@ export function useToggleHelpful() {
       if (!user) throw new Error('Must be logged in');
 
       if (hasVoted) {
-        // Remove vote
-        await supabase.from('review_helpful').delete().eq('review_id', reviewId).eq('user_id', user.id);
-        await supabase.from('venue_reviews').update({ helpful_count: Math.max(0, -1) }).eq('id', reviewId);
-        // Decrement
-        await supabase.rpc('decrement_helpful', { rid: reviewId }).catch(() => {
-          // Fallback: manual update
-          supabase.from('venue_reviews').select('helpful_count').eq('id', reviewId).single().then(({ data }) => {
-            if (data) supabase.from('venue_reviews').update({ helpful_count: Math.max(0, (data.helpful_count ?? 1) - 1) }).eq('id', reviewId);
-          });
-        });
+        const { error } = await supabase
+          .from('review_helpful')
+          .delete()
+          .eq('review_id', reviewId)
+          .eq('user_id', user.id);
+        if (error) throw error;
       } else {
-        // Add vote
-        await supabase.from('review_helpful').insert({ review_id: reviewId, user_id: user.id });
+        const { error } = await supabase
+          .from('review_helpful')
+          .insert({ review_id: reviewId, user_id: user.id });
+        if (error) throw error;
       }
-
-      // Update helpful_count on the review
-      const { count } = await supabase
-        .from('review_helpful')
-        .select('*', { count: 'exact', head: true })
-        .eq('review_id', reviewId);
-
-      await supabase
-        .from('venue_reviews')
-        .update({ helpful_count: count ?? 0 })
-        .eq('id', reviewId);
     },
     onSuccess: (_res, vars) => {
       qc.invalidateQueries({ queryKey: ['venue-reviews', vars.venueId] });

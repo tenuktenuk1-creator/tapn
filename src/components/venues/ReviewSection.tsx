@@ -148,7 +148,6 @@ function InlineReplyForm({
     try {
       await createReply.mutateAsync({ reviewId, venueId, body: body.trim() });
       setBody('');
-      onDone();
     } catch {
       toast.error('Failed to post reply');
     }
