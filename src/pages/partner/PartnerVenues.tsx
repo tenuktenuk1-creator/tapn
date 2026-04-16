@@ -1,7 +1,5 @@
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
-import { useAuth } from '@/hooks/useAuth';
-import { useIsPartner, usePartnerVenues } from '@/hooks/usePartner';
-import { Navigate, Link } from 'react-router-dom';
+import { usePartnerVenues } from '@/hooks/usePartner';
+import { Link } from 'react-router-dom';
 import { Building2, Plus, Edit, ArrowLeft, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,31 +14,10 @@ import {
 import { venueTypeLabels } from '@/types/venue';
 
 export default function PartnerVenues() {
-  const { user, loading: authLoading } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: venues, isLoading: venuesLoading } = usePartnerVenues();
 
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth?redirect=/partner/venues" replace />;
-  }
-
-  if (!isPartner) {
-    return <Navigate to="/partner" replace />;
-  }
-
   return (
-    <PartnerLayout>
-      <div className="container py-8">
+    <div className="container py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link to="/partner/dashboard">
@@ -147,5 +124,5 @@ export default function PartnerVenues() {
           </div>
         )}
       </div>
-    </PartnerLayout>);
+  );
 }

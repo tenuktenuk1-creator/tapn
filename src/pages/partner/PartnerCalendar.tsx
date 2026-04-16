@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navigate } from 'react-router-dom';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays,
   addMonths, subMonths, isSameDay, isSameMonth, isToday, parseISO,
@@ -11,9 +10,7 @@ import {
   X, Check, AlertCircle, Phone, Mail, Building2, ChevronDown,
   Search, Filter,
 } from 'lucide-react';
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
-import { usePartnerBookings, usePartnerVenues, useIsPartner, useConfirmBooking, useDeclineBooking } from '@/hooks/usePartner';
-import { useAuth } from '@/hooks/useAuth';
+import { usePartnerBookings, usePartnerVenues, useConfirmBooking, useDeclineBooking } from '@/hooks/usePartner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -406,8 +403,6 @@ function DayView({
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function PartnerCalendar() {
-  const { user, loading: authLoading } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: rawBookings = [], isLoading: bookingsLoading } = usePartnerBookings();
   const { data: venues = [] } = usePartnerVenues();
 
@@ -417,18 +412,6 @@ export default function PartnerCalendar() {
   const [venueFilter, setVenueFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<CalendarBooking | null>(null);
-
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-  if (!user) return <Navigate to="/auth?redirect=/partner/calendar" replace />;
-  if (!isPartner) return <Navigate to="/partner" replace />;
 
   const bookings = rawBookings as CalendarBooking[];
 
@@ -501,7 +484,7 @@ export default function PartnerCalendar() {
   const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
-    <PartnerLayout>
+    <>
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute -top-32 left-1/4 w-[500px] h-[500px] rounded-full bg-primary/4 blur-[120px]" />
       </div>
@@ -804,6 +787,6 @@ export default function PartnerCalendar() {
           </>
         )}
       </AnimatePresence>
-    </PartnerLayout>
+    </>
   );
 }

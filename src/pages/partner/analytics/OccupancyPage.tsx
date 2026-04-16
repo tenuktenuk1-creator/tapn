@@ -1,12 +1,10 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, parseISO } from 'date-fns';
 import { ArrowLeft, Building2, Clock, AlertTriangle, TrendingUp, Users } from 'lucide-react';
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
-import { usePartnerBookings, usePartnerVenues, useIsPartner } from '@/hooks/usePartner';
-import { useAuth } from '@/hooks/useAuth';
+import { usePartnerBookings, usePartnerVenues } from '@/hooks/usePartner';
 import { cn } from '@/lib/utils';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -38,22 +36,8 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 
 export default function OccupancyPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: bookings = [], isLoading: bookingsLoading } = usePartnerBookings();
   const { data: venues = [] } = usePartnerVenues();
-
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-  if (!user) return <Navigate to="/auth?redirect=/partner/analytics/occupancy" replace />;
-  if (!isPartner) return <Navigate to="/partner" replace />;
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const activeVenues = venues.filter(v => v.is_active);
@@ -117,7 +101,7 @@ export default function OccupancyPage() {
   const gridStyle = { stroke: 'hsl(240 10% 14%)', strokeDasharray: '3 3' };
 
   return (
-    <PartnerLayout>
+    <>
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute -top-32 right-0 w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-[120px]" />
       </div>
@@ -323,6 +307,6 @@ export default function OccupancyPage() {
           </Section>
         </motion.div>
       </div>
-    </PartnerLayout>
+    </>
   );
 }

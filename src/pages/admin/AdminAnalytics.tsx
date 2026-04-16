@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -7,8 +6,6 @@ import {
 } from 'recharts';
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { BarChart2, TrendingUp, DollarSign, Building2, Clock, ArrowUpRight } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useAuth } from '@/hooks/useAuth';
 import { useVenues } from '@/hooks/useVenues';
 import { useAdminBookings } from '@/hooks/useBookings';
 import { cn } from '@/lib/utils';
@@ -31,14 +28,9 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 }
 
 export default function AdminAnalytics() {
-  const { user, isAdmin, loading, role } = useAuth();
   const [period, setPeriod] = useState<Period>('daily');
   const { data: venues = [] } = useVenues({ onlyActive: false });
   const { data: bookings = [], isLoading } = useAdminBookings();
-
-  const isReady = !loading && (user === null || role !== null);
-  if (!isReady) return <AdminLayout><div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div></AdminLayout>;
-  if (!user || !isAdmin) return <Navigate to="/" replace />;
 
   const confirmed = bookings.filter(b => b.status === 'confirmed');
 
@@ -104,8 +96,7 @@ export default function AdminAnalytics() {
   const maxHour = Math.max(...byHour.map(h => h.count), 1);
 
   return (
-    <AdminLayout>
-      <div className="p-6 space-y-6 max-w-[1400px]">
+    <div className="p-6 space-y-6 max-w-[1400px]">
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 border-b border-[hsl(240_10%_12%)]">
           <p className="text-[11px] text-muted-foreground/60 uppercase tracking-[0.12em] font-medium mb-1">Admin</p>
           <h1 className="font-display text-2xl sm:text-3xl font-bold">Analytics</h1>
@@ -242,6 +233,5 @@ export default function AdminAnalytics() {
           ))}
         </motion.div>
       </div>
-    </AdminLayout>
   );
 }

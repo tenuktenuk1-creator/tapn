@@ -12,7 +12,9 @@ import {
   LogOut,
   ChevronDown,
   Zap,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { enterUserMode } from '@/hooks/useViewMode';
 import { useAuth } from '@/hooks/useAuth';
 
 // ─── Nav items ───────────────────────────────────────────────────────────────
@@ -126,6 +128,16 @@ export function PartnerNavbar() {
 
           {/* Right side */}
           <div className="ml-auto flex items-center gap-2 shrink-0">
+            {/* Switch to User Mode */}
+            <button
+              onClick={() => { enterUserMode(); navigate('/'); }}
+              title="Browse as a regular user"
+              className="hidden sm:flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[hsl(240_10%_11%)] transition-all border border-transparent hover:border-[hsl(240_10%_16%)]"
+            >
+              <ArrowLeftRight className="h-3 w-3" />
+              <span>User View</span>
+            </button>
+
             {/* User menu */}
             <div className="relative">
               <button
@@ -253,7 +265,15 @@ export function PartnerNavbar() {
               </nav>
 
               {/* Drawer footer */}
-              <div className="p-3 border-t border-[hsl(240_10%_12%)] shrink-0">
+              <div className="p-3 border-t border-[hsl(240_10%_12%)] shrink-0 space-y-2">
+                {/* Switch to user mode */}
+                <button
+                  onClick={() => { setMobileOpen(false); enterUserMode(); navigate('/'); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-[hsl(240_10%_10%)] transition-all border border-[hsl(240_10%_14%)]"
+                >
+                  <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                  Switch to User Mode
+                </button>
                 <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-[hsl(240_10%_9%)]">
                   <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                     {initials}

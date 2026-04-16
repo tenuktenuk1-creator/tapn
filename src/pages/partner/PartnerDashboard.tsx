@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, subDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -13,10 +13,7 @@ import {
   Clock,
 } from 'lucide-react';
 
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
-import { useAuth } from '@/hooks/useAuth';
 import {
-  useIsPartner,
   usePartnerVenues,
   usePartnerBookings,
   useConfirmBooking,
@@ -62,8 +59,6 @@ function pctChange(current: number, previous: number): number {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function PartnerDashboard() {
-  const { user, loading: authLoading } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: venues = [], isLoading: venuesLoading } = usePartnerVenues();
   const { data: bookings = [], isLoading: bookingsLoading } = usePartnerBookings();
 
@@ -72,19 +67,6 @@ export default function PartnerDashboard() {
 
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
-
-  // ── Guards ────────────────────────────────────────────────────────────────
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-  if (!user) return <Navigate to="/auth?redirect=/partner/dashboard" replace />;
-  if (!isPartner) return <Navigate to="/partner" replace />;
 
   // ── Date strings ──────────────────────────────────────────────────────────
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -166,7 +148,7 @@ export default function PartnerDashboard() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <PartnerLayout>
+    <>
       {/* Ambient background gradients */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
@@ -412,6 +394,6 @@ export default function PartnerDashboard() {
           </>
         )}
       </div>
-    </PartnerLayout>
+    </>
   );
 }

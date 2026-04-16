@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { isPartnerInUserMode } from '@/hooks/useViewMode';
 
 // ─── Shared loading screen ────────────────────────────────────────────────────
 
@@ -34,7 +35,8 @@ export function ConsumerRoute({ children }: { children: React.ReactNode }) {
   if (!isReady) return <LoadingScreen />;
 
   // Authenticated partners belong in the partner area — redirect instantly.
-  if (user && isPartner) {
+  // Exception: if the partner explicitly switched to "user mode", let them browse.
+  if (user && isPartner && !isPartnerInUserMode()) {
     return <Navigate to="/partner/dashboard" replace />;
   }
 
@@ -54,12 +56,15 @@ export function ProtectedRoute({
   requireAdmin = false,
   requirePartner = false,
 }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isPartner } = useAuth();
+  const { user, loading, isAdmin, isPartner, role } = useAuth();
   const location = useLocation();
   // useRef to fire the toast only once per mount cycle
   const toasted = useRef(false);
 
-  if (loading) return <LoadingScreen />;
+  // Wait for both session AND role query to settle before making routing decisions.
+  // role===null with a live user means refreshRole() hasn't resolved yet.
+  const isReady = !loading && (user === null || role !== null);
+  if (!isReady) return <LoadingScreen />;
 
   // 401 — not authenticated
   if (!user) {

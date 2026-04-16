@@ -8,9 +8,10 @@ import {
   AnimatePresence,
   type MotionValue,
 } from 'framer-motion';
-import { MapPin, Menu, X, User, LogOut, Settings } from 'lucide-react';
+import { MapPin, Menu, X, User, LogOut, Settings, ArrowLeftRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { isPartnerInUserMode, exitUserMode } from '@/hooks/useViewMode';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   DropdownMenu,
@@ -32,15 +33,7 @@ interface NavItemProps {
   onClick?: () => void;
 }
 
-function NavItem({
-  to,
-  label,
-  isActive,
-  showPill,
-  onMouseEnter,
-  onMouseLeave,
-  onClick,
-}: NavItemProps) {
+function NavItem({ to, label, isActive, showPill, onMouseEnter, onMouseLeave, onClick }: NavItemProps) {
   return (
     <Link
       to={to}
@@ -54,22 +47,16 @@ function NavItem({
           layoutId="nav-pill"
           className="absolute inset-0 rounded-full"
           style={{
-            background:
-              'radial-gradient(ellipse at center, rgba(255,47,179,0.18) 0%, rgba(155,48,245,0.12) 100%)',
-            boxShadow:
-              '0 0 16px rgba(255,47,179,0.2), inset 0 0 12px rgba(255,47,179,0.06)',
+            background: 'radial-gradient(ellipse at center, rgba(255,47,179,0.18) 0%, rgba(155,48,245,0.12) 100%)',
+            boxShadow: '0 0 16px rgba(255,47,179,0.2), inset 0 0 12px rgba(255,47,179,0.06)',
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         />
       )}
-      <span
-        className={cn(
-          'relative z-10 transition-colors duration-200',
-          isActive || showPill
-            ? 'text-white'
-            : 'text-white/50 hover:text-white/80',
-        )}
-      >
+      <span className={cn(
+        'relative z-10 transition-colors duration-200',
+        isActive || showPill ? 'text-white' : 'text-white/50 hover:text-white/80',
+      )}>
         {label}
       </span>
     </Link>
@@ -78,24 +65,14 @@ function NavItem({
 
 // ─── CursorGlow ───────────────────────────────────────────────────────────────
 
-interface CursorGlowProps {
-  x: MotionValue<number>;
-  y: MotionValue<number>;
-  visible: boolean;
-}
-
-function CursorGlow({ x, y, visible }: CursorGlowProps) {
+function CursorGlow({ x, y, visible }: { x: MotionValue<number>; y: MotionValue<number>; visible: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
       <motion.div
         className="absolute rounded-full"
         style={{
-          width: 300,
-          height: 300,
-          x,
-          y,
-          background:
-            'radial-gradient(circle, rgba(255,47,179,0.13) 0%, rgba(155,48,245,0.07) 50%, transparent 70%)',
+          width: 300, height: 300, x, y,
+          background: 'radial-gradient(circle, rgba(255,47,179,0.13) 0%, rgba(155,48,245,0.07) 50%, transparent 70%)',
           filter: 'blur(8px)',
         }}
         animate={{ opacity: visible ? 1 : 0 }}
@@ -107,27 +84,15 @@ function CursorGlow({ x, y, visible }: CursorGlowProps) {
 
 // ─── CTAButton ────────────────────────────────────────────────────────────────
 
-interface CTAButtonProps {
-  onClick: () => void;
-}
-
-function CTAButton({ onClick }: CTAButtonProps) {
+function CTAButton({ onClick }: { onClick: () => void }) {
   return (
     <motion.div
       animate={{ scale: [1, 1.03, 1] }}
-      transition={{
-        duration: 3.5,
-        repeat: Infinity,
-        repeatType: 'loop',
-        ease: 'easeInOut',
-      }}
+      transition={{ duration: 3.5, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }}
     >
       <motion.button
         onClick={onClick}
-        whileHover={{
-          y: -2,
-          boxShadow: '0 8px 32px rgba(255,47,179,0.45)',
-        }}
+        whileHover={{ y: -2, boxShadow: '0 8px 32px rgba(255,47,179,0.45)' }}
         whileTap={{ scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
         className="relative overflow-hidden rounded-full px-6 py-2 text-sm font-semibold text-white"
@@ -136,20 +101,11 @@ function CTAButton({ onClick }: CTAButtonProps) {
           boxShadow: '0 4px 20px rgba(255,47,179,0.3)',
         }}
       >
-        {/* Shimmer streak */}
         <motion.div
           className="absolute inset-y-0 w-16 -skew-x-12"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%)',
-          }}
+          style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%)' }}
           animate={{ left: ['-20%', '130%'] }}
-          transition={{
-            duration: 0.65,
-            repeat: Infinity,
-            repeatDelay: 3.2,
-            ease: 'easeInOut',
-          }}
+          transition={{ duration: 0.65, repeat: Infinity, repeatDelay: 3.2, ease: 'easeInOut' }}
         />
         <span className="relative z-10">Sign Up</span>
       </motion.button>
@@ -157,28 +113,54 @@ function CTAButton({ onClick }: CTAButtonProps) {
   );
 }
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
+// ─── PartnerModeButton — compact pill that lives in the right account area ────
 
-const NAV_ITEMS = [
-  { to: '/venues', label: 'Venues' },
-  { to: '/plan-a-night', label: 'Plan a Night' },
-  { to: '/how-it-works', label: 'How It Works' },
-  { to: '/partner', label: 'Partner With Us' },
+function PartnerModeButton({ onSwitch }: { onSwitch: () => void }) {
+  return (
+    <motion.button
+      onClick={onSwitch}
+      whileHover={{ scale: 1.04, boxShadow: '0 0 20px hsl(322 100% 60% / 0.35)' }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+      className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white"
+      style={{
+        background: 'linear-gradient(135deg, hsl(322 100% 60% / 0.9) 0%, hsl(280 85% 58% / 0.9) 100%)',
+        boxShadow: '0 2px 12px hsl(322 100% 60% / 0.25)',
+      }}
+      title="Return to Partner Dashboard"
+    >
+      <Zap className="h-3 w-3" />
+      Partner Mode
+    </motion.button>
+  );
+}
+
+// ─── Nav definition ───────────────────────────────────────────────────────────
+
+const ALL_NAV_ITEMS = [
+  { to: '/venues',       label: 'Venues'          },
+  { to: '/plan-a-night', label: 'Plan a Night'    },
+  { to: '/how-it-works', label: 'How It Works'    },
+  { to: '/partner',      label: 'Partner With Us' },
 ];
+
+// ─── Header ───────────────────────────────────────────────────────────────────
 
 export function Header() {
   const { user, isAdmin, isPartner, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // A partner who explicitly switched to user mode — they should see the
+  // consumer nav fully, plus a pill to jump back to their partner dashboard.
+  const isInUserMode = isPartner && isPartnerInUserMode();
+
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [glowVisible, setGlowVisible] = useState(false);
-
   const headerRef = useRef<HTMLDivElement>(null);
 
-  // Cursor glow tracking
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 500, damping: 50 });
@@ -200,16 +182,32 @@ export function Header() {
     }
   };
 
-  // Partners have their own PartnerNavbar — hide all consumer discovery links.
-  // Admins see consumer links but not "Partner With Us".
-  // Regular users see everything.
-  const visibleItems = isPartner
-    ? []
-    : NAV_ITEMS.filter((item) => item.to !== '/partner' || !isAdmin);
+  // Nav visibility rules:
+  //   • Normal partner mode (isPartner && !isInUserMode)
+  //       → No consumer nav — they use PartnerNavbar. ConsumerRoute redirects
+  //         them to /partner/dashboard so this Header is never even rendered.
+  //   • Partner in user mode (isInUserMode)
+  //       → Full consumer nav EXCEPT "Partner With Us" (they already are one).
+  //   • Admin
+  //       → Consumer nav EXCEPT "Partner With Us".
+  //   • Regular user / unauthenticated
+  //       → Full consumer nav including "Partner With Us".
+  const visibleItems = ALL_NAV_ITEMS.filter((item) => {
+    if (item.to === '/partner') {
+      // Hide "Partner With Us" for admins and anyone with partner access
+      return !isAdmin && !isPartner;
+    }
+    return true;
+  });
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const handleReturnToPartner = () => {
+    exitUserMode();
+    navigate('/partner/dashboard');
   };
 
   return (
@@ -219,14 +217,8 @@ export function Header() {
         className="absolute inset-0 border-b"
         animate={
           scrolled
-            ? {
-                opacity: 1,
-                borderColor: 'rgba(255,47,179,0.12)',
-              }
-            : {
-                opacity: 0,
-                borderColor: 'rgba(255,255,255,0)',
-              }
+            ? { opacity: 1, borderColor: 'rgba(255,47,179,0.12)' }
+            : { opacity: 0, borderColor: 'rgba(255,255,255,0)' }
         }
         transition={{ duration: 0.3, ease: 'easeOut' }}
         style={{
@@ -242,8 +234,7 @@ export function Header() {
         animate={{ opacity: scrolled ? 1 : 0 }}
         transition={{ duration: 0.4 }}
         style={{
-          background:
-            'linear-gradient(90deg, transparent 0%, rgba(255,47,179,0.4) 30%, rgba(155,48,245,0.4) 70%, transparent 100%)',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(255,47,179,0.4) 30%, rgba(155,48,245,0.4) 70%, transparent 100%)',
         }}
       />
 
@@ -252,10 +243,7 @@ export function Header() {
         ref={headerRef}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setGlowVisible(true)}
-        onMouseLeave={() => {
-          setGlowVisible(false);
-          setHoveredItem(null);
-        }}
+        onMouseLeave={() => { setGlowVisible(false); setHoveredItem(null); }}
         className="relative"
       >
         <CursorGlow x={glowX} y={glowY} visible={glowVisible} />
@@ -265,27 +253,18 @@ export function Header() {
           <Link to="/" className="relative z-10 flex items-center gap-2">
             <motion.div
               animate={{ scale: [1, 1.1, 1] }}
-              transition={{
-                duration: 0.7,
-                repeat: Infinity,
-                repeatDelay: 4.5,
-                ease: 'easeInOut',
-              }}
+              transition={{ duration: 0.7, repeat: Infinity, repeatDelay: 4.5, ease: 'easeInOut' }}
             >
               <MapPin className="h-5 w-5 text-primary" />
             </motion.div>
-            <span className="font-display text-xl font-bold tracking-tight text-white">
-              TAPN
-            </span>
+            <span className="font-display text-xl font-bold tracking-tight text-white">TAPN</span>
           </Link>
 
           {/* Desktop Nav */}
           <nav className="relative z-10 hidden items-center gap-1 md:flex">
             {visibleItems.map((item) => {
               const isActive = location.pathname === item.to;
-              const showPill = hoveredItem
-                ? hoveredItem === item.to
-                : isActive;
+              const showPill = hoveredItem ? hoveredItem === item.to : isActive;
               return (
                 <NavItem
                   key={item.to}
@@ -300,10 +279,16 @@ export function Header() {
             })}
           </nav>
 
-          {/* Desktop Auth */}
+          {/* Desktop right-side controls */}
           <div className="relative z-10 hidden items-center gap-3 md:flex">
             {user ? (
               <>
+                {/* Partner-in-user-mode: prominent pill to return to partner area */}
+                {isInUserMode && (
+                  <PartnerModeButton onSwitch={handleReturnToPartner} />
+                )}
+
+                {/* Admin shortcut (non-partner admins) */}
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -312,15 +297,9 @@ export function Header() {
                     Admin
                   </Link>
                 )}
-                {isPartner && !isAdmin && (
-                  <Link
-                    to="/partner/dashboard"
-                    className="text-sm font-medium text-white/50 transition-colors hover:text-white"
-                  >
-                    Partner
-                  </Link>
-                )}
+
                 <NotificationBell />
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <motion.button
@@ -331,10 +310,7 @@ export function Header() {
                       <User className="h-4 w-4" />
                     </motion.button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-48 border-white/10 bg-[#0d0d1c]"
-                  >
+                  <DropdownMenuContent align="end" className="w-52 border-white/10 bg-[#0d0d1c]">
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <User className="mr-2 h-4 w-4" />
                       Profile
@@ -345,12 +321,10 @@ export function Header() {
                         Admin Dashboard
                       </DropdownMenuItem>
                     )}
-                    {isPartner && !isAdmin && (
-                      <DropdownMenuItem
-                        onClick={() => navigate('/partner/dashboard')}
-                      >
-                        <Settings className="mr-2 h-4 w-4" />
-                        Partner Dashboard
+                    {isInUserMode && (
+                      <DropdownMenuItem onClick={handleReturnToPartner}>
+                        <Zap className="mr-2 h-4 w-4 text-primary" />
+                        Return to Partner
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
@@ -380,6 +354,20 @@ export function Header() {
 
           {/* Mobile Controls */}
           <div className="relative z-10 flex items-center gap-2 md:hidden">
+            {/* Partner mode pill — mobile */}
+            {isInUserMode && (
+              <button
+                onClick={handleReturnToPartner}
+                className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(322 100% 60% / 0.9) 0%, hsl(280 85% 58% / 0.9) 100%)',
+                  boxShadow: '0 2px 12px hsl(322 100% 60% / 0.25)',
+                }}
+              >
+                <Zap className="h-3 w-3" />
+                <span>Partner</span>
+              </button>
+            )}
             {user && <NotificationBell />}
             <motion.button
               whileTap={{ scale: 0.9 }}
@@ -388,23 +376,11 @@ export function Header() {
             >
               <AnimatePresence mode="wait" initial={false}>
                 {mobileOpen ? (
-                  <motion.div
-                    key="close"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
+                  <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
                     <X className="h-4 w-4" />
                   </motion.div>
                 ) : (
-                  <motion.div
-                    key="menu"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
+                  <motion.div key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
                     <Menu className="h-4 w-4" />
                   </motion.div>
                 )}
@@ -476,20 +452,22 @@ export function Header() {
                         Admin Dashboard
                       </Link>
                     )}
-                    {isPartner && !isAdmin && (
-                      <Link
-                        to="/partner/dashboard"
-                        onClick={() => setMobileOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-sm font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white"
+                    {isInUserMode && (
+                      <button
+                        onClick={() => { setMobileOpen(false); handleReturnToPartner(); }}
+                        className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-left transition-colors"
+                        style={{
+                          background: 'linear-gradient(135deg, hsl(322 100% 60% / 0.12) 0%, hsl(280 85% 58% / 0.1) 100%)',
+                          color: 'hsl(322 100% 70%)',
+                          border: '1px solid hsl(322 100% 60% / 0.2)',
+                        }}
                       >
-                        Partner Dashboard
-                      </Link>
+                        <Zap className="h-4 w-4" />
+                        Return to Partner Dashboard
+                      </button>
                     )}
                     <button
-                      onClick={() => {
-                        handleSignOut();
-                        setMobileOpen(false);
-                      }}
+                      onClick={() => { handleSignOut(); setMobileOpen(false); }}
                       className="rounded-xl px-4 py-3 text-left text-sm font-medium text-destructive transition-colors hover:bg-white/5"
                     >
                       Sign Out
@@ -498,24 +476,15 @@ export function Header() {
                 ) : (
                   <>
                     <button
-                      onClick={() => {
-                        navigate('/auth');
-                        setMobileOpen(false);
-                      }}
+                      onClick={() => { navigate('/auth'); setMobileOpen(false); }}
                       className="rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/60 transition-colors hover:bg-white/5"
                     >
                       Sign In
                     </button>
                     <button
-                      onClick={() => {
-                        navigate('/auth?mode=signup');
-                        setMobileOpen(false);
-                      }}
+                      onClick={() => { navigate('/auth?mode=signup'); setMobileOpen(false); }}
                       className="relative overflow-hidden rounded-full px-4 py-3 text-sm font-semibold text-white"
-                      style={{
-                        background:
-                          'linear-gradient(135deg, #ff2fb3 0%, #9b30f5 100%)',
-                      }}
+                      style={{ background: 'linear-gradient(135deg, #ff2fb3 0%, #9b30f5 100%)' }}
                     >
                       Sign Up
                     </button>

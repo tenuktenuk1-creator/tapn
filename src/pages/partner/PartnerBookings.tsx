@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
-import { useAuth } from '@/hooks/useAuth';
-import { useIsPartner, usePartnerBookings, useConfirmBooking, useDeclineBooking } from '@/hooks/usePartner';
-import { Navigate, Link } from 'react-router-dom';
+import { usePartnerBookings, useConfirmBooking, useDeclineBooking } from '@/hooks/usePartner';
+import { Link } from 'react-router-dom';
 import {
   Calendar, ArrowLeft, Users, Clock, MapPin, Check, X,
   Search, ChevronLeft, ChevronRight, DollarSign, Ban,
@@ -34,8 +32,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PartnerBookings() {
-  const { user, loading: authLoading } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: bookings = [], isLoading: bookingsLoading } = usePartnerBookings();
   const confirmBooking = useConfirmBooking();
   const declineBooking = useDeclineBooking();
@@ -51,19 +47,6 @@ export default function PartnerBookings() {
   const [searchQuery, setSearchQuery]   = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage]   = useState(1);
-
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-
-  if (!user) return <Navigate to="/auth?redirect=/partner/bookings" replace />;
-  if (!isPartner) return <Navigate to="/partner" replace />;
 
   const handleConfirm = async (bookingId: string) => {
     try {
@@ -136,7 +119,7 @@ export default function PartnerBookings() {
   const paginated  = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
-    <PartnerLayout>
+    <>
       <div className="container py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -444,5 +427,6 @@ export default function PartnerBookings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PartnerLayout>);
+    </>
+  );
 }

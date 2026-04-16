@@ -1,9 +1,6 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, Save, Percent, Clock, Globe, Shield, Users, ToggleLeft, AlertTriangle } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,14 +55,9 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
 }
 
 export default function AdminSettings() {
-  const { user, isAdmin, loading, role } = useAuth();
   const [settings, setSettings] = useState(DEFAULTS);
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const isReady = !loading && (user === null || role !== null);
-  if (!isReady) return <AdminLayout><div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div></AdminLayout>;
-  if (!user || !isAdmin) return <Navigate to="/" replace />;
 
   function update<K extends keyof typeof DEFAULTS>(key: K, value: typeof DEFAULTS[K]) {
     setSettings(s => ({ ...s, [key]: value }));
@@ -82,8 +74,7 @@ export default function AdminSettings() {
   }
 
   return (
-    <AdminLayout>
-      <div className="p-6 space-y-6 max-w-3xl">
+    <div className="p-6 space-y-6 max-w-3xl">
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between pb-4 border-b border-[hsl(240_10%_12%)]">
           <div>
             <p className="text-[11px] text-muted-foreground/60 uppercase tracking-[0.12em] font-medium mb-1">Admin</p>
@@ -189,6 +180,5 @@ export default function AdminSettings() {
           )}
         </AnimatePresence>
       </div>
-    </AdminLayout>
   );
 }

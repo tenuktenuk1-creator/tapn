@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { notify } from '@/lib/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -474,7 +472,6 @@ interface ConfirmAction {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function AdminPartners() {
-  const { user, isAdmin, loading } = useAuth();
   const { data: partnerVenues, isLoading } = useAdminPartnerVenues();
   const approveMutation = useApprovePartnerVenue();
   const rejectMutation = useRejectPartnerVenue();
@@ -492,20 +489,6 @@ export default function AdminPartners() {
     (a) => a.status === 'needs_more_information'
   ).length;
   const approvedCount = allApplications.filter((a) => a.status === 'approved').length;
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="container py-8 flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return <Navigate to="/" replace />;
-  }
 
   const pending = partnerVenues?.filter((pv) => pv.status === 'pending') || [];
   const approved = partnerVenues?.filter((pv) => pv.status === 'approved') || [];
@@ -692,8 +675,8 @@ export default function AdminPartners() {
   }
 
   return (
-    <AdminLayout>
-      <div className="container py-8">
+    <>
+    <div className="container py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin">
@@ -831,6 +814,6 @@ export default function AdminPartners() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AdminLayout>
+    </>
   );
 }

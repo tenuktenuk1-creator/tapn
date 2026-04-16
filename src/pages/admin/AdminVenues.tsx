@@ -1,7 +1,5 @@
 import { useState, useMemo } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Link, Navigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'react-router-dom';
 import { useAdminVenues } from '@/hooks/useVenues';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -55,7 +53,6 @@ import { useQueryClient } from '@tanstack/react-query';
 const ITEMS_PER_PAGE = 10;
 
 export default function AdminVenues() {
-  const { user, isAdmin, loading } = useAuth();
   // Admin must see all venues (active + inactive) with owner info
   const { data: venues, isLoading, error } = useAdminVenues();
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -68,20 +65,6 @@ export default function AdminVenues() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'price'>('name');
   const [currentPage, setCurrentPage] = useState(1);
-
-  if (loading) {
-    return (
-      <AdminLayout>
-        <div className="container py-8 flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return <Navigate to="/" replace />;
-  }
 
   // Filter and sort venues
   const filteredVenues = useMemo(() => {
@@ -173,8 +156,7 @@ export default function AdminVenues() {
   const venueTypes = ['cafe', 'karaoke', 'pool_snooker', 'lounge'];
 
   return (
-    <AdminLayout>
-      <div className="container py-8">
+    <div className="container py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -485,5 +467,5 @@ export default function AdminVenues() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </AdminLayout>);
+  );
 }

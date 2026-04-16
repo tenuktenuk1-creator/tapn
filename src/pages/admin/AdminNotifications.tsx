@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Bell, Send, Users, Building2, Megaphone, Check, Clock, Loader2 } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +35,7 @@ const TARGET_OPTIONS = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AdminNotifications() {
-  const { user, isAdmin, loading, role } = useAuth();
+  const { user, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -58,10 +56,6 @@ export default function AdminNotifications() {
     },
     enabled: !!user && !!isAdmin,
   });
-
-  const isReady = !loading && (user === null || role !== null);
-  if (!isReady) return <AdminLayout><div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div></AdminLayout>;
-  if (!user || !isAdmin) return <Navigate to="/" replace />;
 
   async function handleSend() {
     if (!title.trim() || !body.trim()) {
@@ -149,8 +143,7 @@ export default function AdminNotifications() {
   const targetLabel = TARGET_OPTIONS.find(o => o.value === target)?.label ?? target;
 
   return (
-    <AdminLayout>
-      <div className="p-6 space-y-6 max-w-[1400px]">
+    <div className="p-6 space-y-6 max-w-[1400px]">
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 border-b border-[hsl(240_10%_12%)]">
           <p className="text-[11px] text-muted-foreground/60 uppercase tracking-[0.12em] font-medium mb-1">Admin</p>
           <h1 className="font-display text-2xl sm:text-3xl font-bold">Notifications</h1>
@@ -256,6 +249,5 @@ export default function AdminNotifications() {
           </motion.div>
         </div>
       </div>
-    </AdminLayout>
   );
 }
