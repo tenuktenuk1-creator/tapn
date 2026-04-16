@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'react';
-import { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { AdminSidebar } from './AdminSidebar';
-import { useLocation } from 'react-router-dom';
-
-interface AdminLayoutProps {
-  children: ReactNode;
-}
+import { Outlet, useLocation } from 'react-router-dom';
 
 const SIDEBAR_EXPANDED = 228;
 const SIDEBAR_COLLAPSED = 60;
-const MOBILE_BREAKPOINT = 1024;
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -69,7 +63,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </span>
         </div>
 
-        <main className="flex-1 overflow-auto">{children}</main>
+        {/* Content area — only this animates on route change */}
+        <main className="flex-1 overflow-auto">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
     </div>
   );

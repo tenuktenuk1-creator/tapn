@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -13,8 +13,6 @@ import {
   AlertTriangle, ChevronRight, Clock, Check, X, ArrowUpRight,
   Activity, ShieldCheck, Zap,
 } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useAuth } from '@/hooks/useAuth';
 import { useVenues } from '@/hooks/useVenues';
 import { useAdminBookings } from '@/hooks/useBookings';
 import { useQuery } from '@tanstack/react-query';
@@ -138,7 +136,6 @@ function ActivityIcon({ type }: { type: string }) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
-  const { user, isAdmin, loading: authLoading, role } = useAuth();
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const { data: allVenues = [], isLoading: venuesLoading } = useVenues({ onlyActive: false });
   const { data: bookings = [], isLoading: bookingsLoading } = useAdminBookings();
@@ -161,17 +158,6 @@ export default function AdminDashboard() {
     },
   });
 
-  const isReady = !authLoading && (user === null || role !== null);
-  if (!isReady) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AdminLayout>
-    );
-  }
-  if (!user || !isAdmin) return <Navigate to="/" replace />;
 
   const isLoading = venuesLoading || bookingsLoading;
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -250,7 +236,7 @@ export default function AdminDashboard() {
   ].filter(Boolean) as { type: string; msg: string; to: string }[];
 
   return (
-    <AdminLayout>
+    <>
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute -top-32 left-1/3 w-[600px] h-[600px] rounded-full bg-primary/4 blur-[140px]" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-purple-500/3 blur-[120px]" />
@@ -482,6 +468,6 @@ export default function AdminDashboard() {
           ))}
         </motion.div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

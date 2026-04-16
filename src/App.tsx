@@ -1,10 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute, PublicOnlyRoute, ConsumerRoute } from "@/components/auth/ProtectedRoute";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { PartnerLayout } from "@/components/layout/PartnerLayout";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import ProfilePage from "./pages/Profile";
@@ -53,265 +55,65 @@ const App = () => (
         <ScrollToTop />
         <AuthProvider>
           <Routes>
-            {/* ── Consumer-facing routes ─────────────────────────────────────
-                ConsumerRoute blocks render until session+role have resolved,
-                then redirects authenticated partners to /partner/dashboard.
-                This prevents any flicker of consumer content for partners.
-            ─────────────────────────────────────────────────────────────── */}
-            <Route
-              path="/"
-              element={
-                <ConsumerRoute>
-                  <Index />
-                </ConsumerRoute>
-              }
-            />
-            <Route
-              path="/venues"
-              element={
-                <ConsumerRoute>
-                  <VenuesPage />
-                </ConsumerRoute>
-              }
-            />
-            <Route
-              path="/venues/:id"
-              element={
-                <ConsumerRoute>
-                  <VenueDetailPage />
-                </ConsumerRoute>
-              }
-            />
+            {/* ── Consumer-facing routes ────────────────────────────────────── */}
+            <Route path="/" element={<ConsumerRoute><Index /></ConsumerRoute>} />
+            <Route path="/venues" element={<ConsumerRoute><VenuesPage /></ConsumerRoute>} />
+            <Route path="/venues/:id" element={<ConsumerRoute><VenueDetailPage /></ConsumerRoute>} />
             <Route path="/booking-success" element={<BookingSuccess />} />
-            <Route
-              path="/plan-a-night"
-              element={
-                <ConsumerRoute>
-                  <PlanANight />
-                </ConsumerRoute>
-              }
-            />
-            <Route
-              path="/how-it-works"
-              element={
-                <ConsumerRoute>
-                  <HowItWorks />
-                </ConsumerRoute>
-              }
-            />
-            <Route
-              path="/auth"
-              element={
-                <PublicOnlyRoute>
-                  <AuthPage />
-                </PublicOnlyRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/bookings"
-              element={
-                <ProtectedRoute>
-                  <BookingsPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/plan-a-night" element={<ConsumerRoute><PlanANight /></ConsumerRoute>} />
+            <Route path="/how-it-works" element={<ConsumerRoute><HowItWorks /></ConsumerRoute>} />
+            <Route path="/auth" element={<PublicOnlyRoute><AuthPage /></PublicOnlyRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
 
+            {/* ── Admin nested layout ───────────────────────────────────────
+                AdminLayout stays mounted across all /admin/* navigations.
+                Only the Outlet content animates on route change.
+            ──────────────────────────────────────────────────────────────── */}
             <Route
               path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/venues"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminVenues />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/venues/new"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/venues/:id/edit"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/bookings"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminBookings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/partners"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPartners />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/partners/:applicationId"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPartnerDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/analytics"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminAnalytics />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/payments"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPayments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/notifications"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminNotifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminSettings />
-                </ProtectedRoute>
-              }
-            />
+              element={<ProtectedRoute requireAdmin><AdminLayout /></ProtectedRoute>}
+            >
+              {/* /admin → /admin/dashboard */}
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="venues" element={<AdminVenues />} />
+              <Route path="venues/new" element={<AdminVenueForm />} />
+              <Route path="venues/:id/edit" element={<AdminVenueForm />} />
+              <Route path="bookings" element={<AdminBookings />} />
+              <Route path="partners" element={<AdminPartners />} />
+              <Route path="partners/:applicationId" element={<AdminPartnerDetail />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="payments" element={<AdminPayments />} />
+              <Route path="notifications" element={<AdminNotifications />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
-            {/* Partner application flow — open to any logged-in user */}
-            <Route
-              path="/partner/apply"
-              element={
-                <ProtectedRoute>
-                  <PartnerApplyPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/apply/status"
-              element={
-                <ProtectedRoute>
-                  <PartnerApplyStatus />
-                </ProtectedRoute>
-              }
-            />
+            {/* ── Partner public / pre-auth routes ─────────────────────────── */}
+            {/* Landing page for non-partners (ConsumerRoute redirects active partners away) */}
+            <Route path="/partner" element={<ConsumerRoute><PartnerLanding /></ConsumerRoute>} />
+            {/* Application flow — open to any logged-in user */}
+            <Route path="/partner/apply" element={<ProtectedRoute><PartnerApplyPage /></ProtectedRoute>} />
+            <Route path="/partner/apply/status" element={<ProtectedRoute><PartnerApplyStatus /></ProtectedRoute>} />
 
-            {/* Partner landing — skip to dashboard if already a partner */}
+            {/* ── Partner nested layout ─────────────────────────────────────
+                PartnerLayout stays mounted across all /partner/* navigations.
+                Only the Outlet content animates on route change.
+            ──────────────────────────────────────────────────────────────── */}
             <Route
               path="/partner"
-              element={
-                <ConsumerRoute>
-                  <PartnerLanding />
-                </ConsumerRoute>
-              }
-            />
-            <Route
-              path="/partner/dashboard"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/venues"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerVenues />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/venues/new"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/venues/:id/edit"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerVenueForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/bookings"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerBookings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/calendar"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerCalendar />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/settings"
-              element={
-                <ProtectedRoute requirePartner>
-                  <PartnerSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/analytics/revenue"
-              element={
-                <ProtectedRoute requirePartner>
-                  <RevenueDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/partner/analytics/occupancy"
-              element={
-                <ProtectedRoute requirePartner>
-                  <OccupancyPage />
-                </ProtectedRoute>
-              }
-            />
+              element={<ProtectedRoute requirePartner><PartnerLayout /></ProtectedRoute>}
+            >
+              <Route path="dashboard" element={<PartnerDashboard />} />
+              <Route path="venues" element={<PartnerVenues />} />
+              <Route path="venues/new" element={<PartnerVenueForm />} />
+              <Route path="venues/:id/edit" element={<PartnerVenueForm />} />
+              <Route path="bookings" element={<PartnerBookings />} />
+              <Route path="calendar" element={<PartnerCalendar />} />
+              <Route path="settings" element={<PartnerSettings />} />
+              <Route path="analytics/revenue" element={<RevenueDetailPage />} />
+              <Route path="analytics/occupancy" element={<OccupancyPage />} />
+            </Route>
 
             <Route path="*" element={<NotFound />} />
           </Routes>

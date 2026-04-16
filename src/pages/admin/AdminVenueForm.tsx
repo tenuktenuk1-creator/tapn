@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useNavigate, useParams, Link, Navigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Save, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,7 +45,6 @@ const defaultOpeningHours = (): OpeningHours => ({
 export default function AdminVenueForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAdmin, loading: authLoading } = useAuth();
   const isEditing = !!id;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,17 +102,6 @@ export default function AdminVenueForm() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <AdminLayout>
-        <div className="container py-8 flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (!user || !isAdmin) return <Navigate to="/" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,8 +209,7 @@ export default function AdminVenueForm() {
   };
 
   return (
-    <AdminLayout>
-      <div className="container py-8 max-w-2xl">
+    <div className="container py-8 max-w-2xl">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin/venues">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -427,5 +412,5 @@ export default function AdminVenueForm() {
           </div>
         </form>
       </div>
-    </AdminLayout>);
+  );
 }

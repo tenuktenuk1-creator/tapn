@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Link, useParams, Navigate } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useAdminApplicationDetail,
@@ -840,7 +839,7 @@ function ActionsCard({
 
 export default function AdminPartnerDetail() {
   const { applicationId } = useParams<{ applicationId: string }>();
-  const { user, isAdmin, loading } = useAuth();
+  const { user } = useAuth();
 
   const { data: application, isLoading, error } = useAdminApplicationDetail(
     applicationId ?? null
@@ -852,39 +851,31 @@ export default function AdminPartnerDetail() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [requestInfoOpen, setRequestInfoOpen] = useState(false);
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
-      <AdminLayout>
-        <div className="container py-8 flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AdminLayout>
+      <div className="container py-8 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
     );
-  }
-
-  if (!user || !isAdmin) {
-    return <Navigate to="/" replace />;
   }
 
   if (error || !application) {
     return (
-      <AdminLayout>
-        <div className="container py-8">
-          <div className="text-center py-20">
-            <AlertTriangle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
-            <p className="text-foreground font-semibold">Application not found</p>
-            <p className="text-muted-foreground text-sm mt-1">
-              The application ID does not exist or could not be loaded.
-            </p>
-            <Link to="/admin/partners">
-              <Button variant="outline" className="mt-4 border-border gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Partners
-              </Button>
-            </Link>
-          </div>
+      <div className="container py-8">
+        <div className="text-center py-20">
+          <AlertTriangle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
+          <p className="text-foreground font-semibold">Application not found</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            The application ID does not exist or could not be loaded.
+          </p>
+          <Link to="/admin/partners">
+            <Button variant="outline" className="mt-4 border-border gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Partners
+            </Button>
+          </Link>
         </div>
-      </AdminLayout>
+      </div>
     );
   }
 
@@ -953,8 +944,8 @@ export default function AdminPartnerDetail() {
   };
 
   return (
-    <AdminLayout>
-      <div className="container py-8 max-w-[1400px]">
+    <>
+    <div className="container py-8 max-w-[1400px]">
         {/* Top section */}
         <div className="mb-6 space-y-3">
           {/* Back + breadcrumb */}
@@ -1383,6 +1374,6 @@ export default function AdminPartnerDetail() {
         onConfirm={handleRequestInfo}
         isLoading={isMutating}
       />
-    </AdminLayout>
+    </>
   );
 }

@@ -11,11 +11,7 @@ import {
   isWithinInterval, parseISO, isSameDay,
 } from 'date-fns';
 import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, BarChart2, Calendar, Clock, Building2 } from 'lucide-react';
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
 import { usePartnerBookings, usePartnerVenues } from '@/hooks/usePartner';
-import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
-import { useIsPartner } from '@/hooks/usePartner';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -68,23 +64,9 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 
 export default function RevenueDetailPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
   const { data: bookings = [], isLoading: bookingsLoading } = usePartnerBookings();
   const { data: venues = [] } = usePartnerVenues();
   const [period, setPeriod] = useState<Period>('daily');
-
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-  if (!user) return <Navigate to="/auth?redirect=/partner/analytics/revenue" replace />;
-  if (!isPartner) return <Navigate to="/partner" replace />;
 
   const confirmed = bookings.filter(b => b.status === 'confirmed');
 
@@ -196,7 +178,7 @@ export default function RevenueDetailPage() {
   const gridStyle = { stroke: 'hsl(240 10% 14%)', strokeDasharray: '3 3' };
 
   return (
-    <PartnerLayout>
+    <>
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-purple-500/4 blur-[100px]" />
@@ -431,6 +413,6 @@ export default function RevenueDetailPage() {
           </Section>
         </motion.div>
       </div>
-    </PartnerLayout>
+    </>
   );
 }

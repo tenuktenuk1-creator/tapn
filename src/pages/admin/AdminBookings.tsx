@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -106,7 +105,7 @@ function getStatusConfig(status: string) {
 }
 
 export default function AdminBookings() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,20 +150,6 @@ export default function AdminBookings() {
     }
     setLoading(false);
   };
-
-  if (authLoading) {
-    return (
-      <AdminLayout>
-        <div className="container py-8 flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return <Navigate to="/" replace />;
-  }
 
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
@@ -292,8 +277,7 @@ export default function AdminBookings() {
     status === 'pending' || status === 'confirmed' || status === 'approved';
 
   return (
-    <AdminLayout>
-      <div className="container py-8">
+    <div className="container py-8">
         <div className="flex items-center gap-4 mb-8">
           <Link to="/admin">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -741,5 +725,5 @@ export default function AdminBookings() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </AdminLayout>);
+  );
 }

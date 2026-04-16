@@ -1,15 +1,12 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navigate } from 'react-router-dom';
 import {
   User, Building2, Clock, Bell, Users, CreditCard, Palette,
   Shield, AlertTriangle, ChevronDown, ChevronRight, Check,
   Upload, Plus, Trash2, Eye, EyeOff, Save, Mail, Phone,
   Globe, Instagram, Facebook, Lock, LogOut, Camera,
 } from 'lucide-react';
-import { PartnerLayout } from '@/components/layout/PartnerLayout';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsPartner } from '@/hooks/usePartner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -162,8 +159,7 @@ function DangerCard({ title, description, buttonLabel, onConfirm }: {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function PartnerSettings() {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const { data: isPartner, isLoading: partnerLoading } = useIsPartner();
+  const { user, signOut } = useAuth();
 
   // ── Local state (TODO: load from Supabase on mount) ────────────────────────
   const [profile, setProfile] = useState(MOCK_PROFILE);
@@ -184,19 +180,7 @@ export default function PartnerSettings() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (authLoading || partnerLoading) {
-    return (
-      <PartnerLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      </PartnerLayout>
-    );
-  }
-  if (!user) return <Navigate to="/auth?redirect=/partner/settings" replace />;
-  if (!isPartner) return <Navigate to="/partner" replace />;
-
-  const team = [{ ...MOCK_TEAM[0], email: user.email ?? '' }];
+  const team = [{ ...MOCK_TEAM[0], email: user?.email ?? '' }];
 
   function markDirty() { setIsDirty(true); }
 
@@ -214,7 +198,7 @@ export default function PartnerSettings() {
   }
 
   return (
-    <PartnerLayout>
+    <>
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full bg-primary/3 blur-[120px]" />
       </div>
@@ -555,7 +539,7 @@ export default function PartnerSettings() {
                 </div>
                 <div className="p-3 rounded-xl bg-[hsl(240_10%_11%)] border border-[hsl(240_10%_15%)]">
                   <p className="text-xs font-medium mb-1">Signed in as</p>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
             </SectionCard>
@@ -626,6 +610,6 @@ export default function PartnerSettings() {
           )}
         </AnimatePresence>
       </div>
-    </PartnerLayout>
+    </>
   );
 }

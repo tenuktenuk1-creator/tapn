@@ -1,10 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
 import { CreditCard, DollarSign, AlertTriangle, Check, Clock, ArrowUpRight, Filter } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useAuth } from '@/hooks/useAuth';
 import { useAdminBookings } from '@/hooks/useBookings';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -23,14 +20,9 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
 };
 
 export default function AdminPayments() {
-  const { user, isAdmin, loading, role } = useAuth();
   const { data: bookings = [], isLoading } = useAdminBookings();
   const [search, setSearch] = useState('');
   const [payFilter, setPayFilter] = useState('all');
-
-  const isReady = !loading && (user === null || role !== null);
-  if (!isReady) return <AdminLayout><div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div></AdminLayout>;
-  if (!user || !isAdmin) return <Navigate to="/" replace />;
 
   const confirmed = bookings.filter(b => b.status === 'confirmed');
   const totalRevenue = confirmed.reduce((s, b) => s + ((b.total_price ?? 0) / 100), 0);
@@ -48,8 +40,7 @@ export default function AdminPayments() {
   }, [bookings, payFilter, search]);
 
   return (
-    <AdminLayout>
-      <div className="p-6 space-y-6 max-w-[1400px]">
+    <div className="p-6 space-y-6 max-w-[1400px]">
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="pb-4 border-b border-[hsl(240_10%_12%)]">
           <p className="text-[11px] text-muted-foreground/60 uppercase tracking-[0.12em] font-medium mb-1">Admin</p>
           <h1 className="font-display text-2xl sm:text-3xl font-bold">Payments</h1>
@@ -159,6 +150,5 @@ export default function AdminPayments() {
           </div>
         </motion.div>
       </div>
-    </AdminLayout>
   );
 }
